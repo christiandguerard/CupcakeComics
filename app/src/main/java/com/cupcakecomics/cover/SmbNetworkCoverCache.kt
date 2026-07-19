@@ -220,6 +220,19 @@ object SmbNetworkCoverCache {
             ?.relativePath
     }
 
+    private const val NON_ZIP_COVER_MAX_BYTES = 50L * 1024 * 1024 // 50 MB
+
+    private fun buildAuth(share: SmbShareEntity, credentials: CredentialStore): AuthenticationContext =
+        if (share.useGuest || share.username.isBlank()) {
+            AuthenticationContext.guest()
+        } else {
+            AuthenticationContext(
+                share.username.trim(),
+                credentials.getSecret(share.credentialKey).orEmpty().toCharArray(),
+                share.domain.trim(),
+            )
+        }
+
     private fun downloadAndWriteSmallCover(
         share: SmbShareEntity,
         relativePath: String,
@@ -233,6 +246,27 @@ object SmbNetworkCoverCache {
             writeSmallCoverFromZipRange(share, rel, fileName, credentials, outFile)
             return
         }
+
+        // CBR/other: check file size before downloading full archive
+        val fileSize = runCatching {
+            SMBClient(smbConfig).use { client ->
+                client.connect(share.host, share.port).use { connection ->
+                    val session = connection.authenticate(buildAuth(share, credentials))
+                    session.connectShare(share.shareName).use { remote ->
+                        (remote as DiskShare)
+                            .getFileInformation(rel.replace('/', '\\'))
+                            .standardInformation
+                            .endOfFile
+                    }
+                }
+            }
+        }.getOrElse { -1L }
+
+        if (fileSize > NON_ZIP_COVER_MAX_BYTES) {
+            Log.d(TAG, "Skipping cover for $rel — file too large ($fileSize bytes)")
+            return   // leave outFile absent; caller returns null -> placeholder shown
+        }
+
         // CBR/other: parsers need a local file — download full archive once, then delete.
         val safeName = if (ComicFileNames.isComicArchive(fileName)) fileName else "$fileName.cbz"
         val tmpDir = File(outFile.parentFile, "tmp")
@@ -245,15 +279,7 @@ object SmbNetworkCoverCache {
         try {
             SMBClient(smbConfig).use { client ->
                 client.connect(share.host, share.port).use { connection ->
-                    val auth = if (share.useGuest || share.username.isBlank()) {
-                        AuthenticationContext.guest()
-                    } else {
-                        AuthenticationContext(
-                            share.username.trim(),
-                            credentials.getSecret(share.credentialKey).orEmpty().toCharArray(),
-                            share.domain.trim(),
-                        )
-                    }
+                    val auth = buildAuth(share, credentials)
                     val session = connection.authenticate(auth)
                     session.connectShare(share.shareName).use { remote ->
                         val disk = remote as DiskShare
