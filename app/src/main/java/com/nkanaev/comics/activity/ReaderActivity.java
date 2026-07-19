@@ -84,14 +84,31 @@ public class ReaderActivity extends AppCompatActivity {
                     }
                     setFragment(fragment);
                 } else {
-                    // Legacy reader cannot stream SMB; require a real local file.
+                    // Legacy reader cannot stream SMB directly.
+                    // Route any SMB open through CupcakeReaderFragment regardless of GPU flag;
+                    // it handles staging internally and shows progress.
                     if (extras.containsKey(CupcakeReaderFragment.PARAM_SMB_SHARE_ID)
                             && mode != ReaderFragment.Mode.MODE_LIBRARY) {
-                        File smbHandler = (File) extras.getSerializable(ReaderFragment.PARAM_HANDLER);
-                        if (smbHandler == null || !smbHandler.isFile()) {
-                            finish();
-                            return;
+                        Fragment smbFragment = CupcakeReaderFragment.createFile(
+                                new File(""), /* placeholder — openFromArgs reads SMB extras first */
+                                identity);
+                        smbFragment.getArguments().putLong(
+                                CupcakeReaderFragment.PARAM_SMB_SHARE_ID,
+                                extras.getLong(CupcakeReaderFragment.PARAM_SMB_SHARE_ID));
+                        smbFragment.getArguments().putString(
+                                CupcakeReaderFragment.PARAM_SMB_RELATIVE_PATH,
+                                extras.getString(CupcakeReaderFragment.PARAM_SMB_RELATIVE_PATH));
+                        if (extras.containsKey(ReaderFragment.PARAM_PAGE)) {
+                            smbFragment.getArguments().putInt(
+                                    ReaderFragment.PARAM_PAGE,
+                                    extras.getInt(ReaderFragment.PARAM_PAGE));
                         }
+                        if (identity != null) {
+                            smbFragment.getArguments().putString(
+                                    ReaderFragment.PARAM_IDENTITY_KEY, identity);
+                        }
+                        setFragment(smbFragment);
+                        return;
                     }
                     ReaderFragment fragment;
                     if (mode == ReaderFragment.Mode.MODE_LIBRARY)
