@@ -42,6 +42,18 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private val _session = MutableStateFlow(ReaderSession())
     val session: StateFlow<ReaderSession> = _session.asStateFlow()
 
+    @Volatile private var stageCancelledFlag = false
+    private val _stageProgress = MutableStateFlow<Pair<Long, Long>?>(null)
+    val stageProgress: StateFlow<Pair<Long, Long>?> = _stageProgress.asStateFlow()
+
+    fun cancelStaging() { stageCancelledFlag = true }
+    fun resetStageCancel() { stageCancelledFlag = false }
+    fun isStageCancelled(): Boolean = stageCancelledFlag
+    fun setStageProgress(copied: Long, total: Long) {
+        _stageProgress.value = copied to total
+    }
+    fun clearStageProgress() { _stageProgress.value = null }
+
     fun open(
         source: PageSource,
         identityKey: String? = null,
@@ -49,6 +61,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         initialPage: Int = 0,
         localPath: String? = null,
     ) {
+        resetStageCancel()
+        clearStageProgress()
         closeSource()
         this.pageSource = source
         this.identityKey = identityKey

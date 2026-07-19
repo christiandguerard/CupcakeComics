@@ -30,6 +30,7 @@ object PageSourceFactory {
         relativePath: String,
         keepOffline: Boolean = false,
         onStageProgress: ((Long, Long) -> Unit)? = null,
+        isCancelled: () -> Boolean = { false },
     ): OpenResult {
         val name = relativePath.substringAfterLast('/').substringAfterLast('\\')
         if (ZipRangePageSource.isZipName(name)) {
@@ -45,10 +46,10 @@ object PageSourceFactory {
                 OpenResult(source = source, streamed = true)
             } catch (t: Throwable) {
                 // Fall back to full stage
-                stageAndParse(context, share, relativePath, keepOffline, onStageProgress)
+                stageAndParse(context, share, relativePath, keepOffline, onStageProgress, isCancelled)
             }
         }
-        return stageAndParse(context, share, relativePath, keepOffline, onStageProgress)
+        return stageAndParse(context, share, relativePath, keepOffline, onStageProgress, isCancelled)
     }
 
     private fun stageAndParse(
@@ -57,12 +58,13 @@ object PageSourceFactory {
         relativePath: String,
         keepOffline: Boolean,
         onStageProgress: ((Long, Long) -> Unit)?,
+        isCancelled: () -> Boolean = { false },
     ): OpenResult {
         require(ComicFileNames.isComicArchive(relativePath.substringAfterLast('/'))) {
             "Not a comic archive"
         }
         val staged = SmbStageManager(context, CredentialStore(context))
-            .stage(share, relativePath, keepOffline, onProgress = onStageProgress)
+            .stage(share, relativePath, keepOffline, isCancelled = isCancelled, onProgress = onStageProgress)
             .getOrThrow()
         return OpenResult(
             source = ParserPageSource.fromFile(staged),

@@ -115,6 +115,7 @@ class CupcakeReaderFragment : Fragment() {
         setupPager()
 
         view.findViewById<ImageButton>(R.id.reader_btn_close).setOnClickListener {
+            viewModel.cancelStaging()
             requireActivity().finish()
         }
         view.findViewById<ImageButton>(R.id.reader_btn_share).setOnClickListener { showShareMenu() }
@@ -479,6 +480,8 @@ class CupcakeReaderFragment : Fragment() {
                             ?: throw IllegalArgumentException("Share not found")
                         com.cupcakecomics.reader.source.PageSourceFactory.openSmb(
                             requireContext(), share, rel, keepOffline = false,
+                            onStageProgress = { copied, total -> viewModel.setStageProgress(copied, total) },
+                            isCancelled = { viewModel.isStageCancelled() },
                         )
                     }
                     viewModel.open(opened.source, identity, null, initialPage)
@@ -523,8 +526,22 @@ class CupcakeReaderFragment : Fragment() {
     private fun collectSession() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.session.collect { session ->
-                    bindSession(session)
+                launch {
+                    viewModel.session.collect { session ->
+                        bindSession(session)
+                    }
+                }
+                launch {
+                    val bytesText = view?.findViewById<TextView>(R.id.reader_loading_bytes)
+                    viewModel.stageProgress.collect { progress ->
+                        if (progress != null && progress.second > 0) {
+                            bytesText?.visibility = View.VISIBLE
+                            bytesText?.text = "${android.text.format.Formatter.formatShortFileSize(requireContext(), progress.first)} / " +
+                                android.text.format.Formatter.formatShortFileSize(requireContext(), progress.second)
+                        } else {
+                            bytesText?.visibility = View.GONE
+                        }
+                    }
                 }
             }
         }
@@ -709,6 +726,7 @@ class CupcakeReaderFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        viewModel.cancelStaging()
         pagerCallback?.let { pagePager?.unregisterOnPageChangeCallback(it) }
         pagerCallback = null
         continuousScrollListener?.let { continuousList?.removeOnScrollListener(it) }
