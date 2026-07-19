@@ -1,0 +1,502 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="none"
+            android:fillViewport="true">
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:paddingBottom="32dp">
+
+        <!-- Notifications -->
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_section_notifications"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:paddingBottom="8dp"/>
+
+        <CheckBox
+                android:id="@+id/settings_pull_notify"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_pull_notify"/>
+
+        <TextView
+                android:id="@+id/settings_notify_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="13sp"/>
+
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp">
+            <Button
+                    android:id="@+id/settings_notify_grant"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_notify_grant"
+                    style="?android:attr/buttonBarButtonStyle"/>
+            <Button
+                    android:id="@+id/settings_notify_system"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_notify_system"
+                    style="?android:attr/buttonBarButtonStyle"/>
+        </LinearLayout>
+
+        <CheckBox
+                android:id="@+id/settings_notify_digest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_notify_digest"/>
+
+        <CheckBox
+                android:id="@+id/settings_notify_downloads"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_notify_downloads"/>
+
+        <CheckBox
+                android:id="@+id/settings_offline_download_background"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_offline_download_background"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/settings_offline_download_background_hint"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"/>
+
+        <CheckBox
+                android:id="@+id/settings_quiet_hours"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_quiet_hours"/>
+
+        <LinearLayout
+                android:id="@+id/settings_quiet_hours_row"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical">
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_quiet_from"
+                    android:textSize="14sp"/>
+            <Spinner
+                    android:id="@+id/settings_quiet_start"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"/>
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_quiet_to"
+                    android:textSize="14sp"
+                    android:layout_marginStart="8dp"/>
+            <Spinner
+                    android:id="@+id/settings_quiet_end"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"/>
+        </LinearLayout>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_notify_hint"
+                android:textSize="13sp"/>
+
+        <!-- Reminders -->
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/settings_section_reminders"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:paddingBottom="8dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_reminders_hint"
+                android:textSize="13sp"/>
+
+        <Button
+                android:id="@+id/settings_open_reminders"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_reminders_manage"
+                style="?android:attr/buttonBarButtonStyle"/>
+
+        <!-- Pull List -->
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/settings_section_pull"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:paddingBottom="8dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_pull_scan_interval"
+                android:textSize="14sp"/>
+        <Spinner
+                android:id="@+id/settings_pull_scan_interval"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <CheckBox
+                android:id="@+id/settings_pull_scan_wifi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_pull_scan_wifi"/>
+
+        <CheckBox
+                android:id="@+id/settings_pull_auto_download"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_pull_auto_download"/>
+
+        <CheckBox
+                android:id="@+id/settings_pull_wifi_only"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_pull_wifi_only"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/settings_comicvine_key"
+                android:textStyle="bold"
+                android:textSize="14sp"/>
+
+        <EditText
+                android:id="@+id/settings_comicvine_key"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:hint="@string/settings_comicvine_key_hint"
+                android:inputType="textVisiblePassword"
+                android:maxLines="1"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_comicvine_key_help"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_pull_leave_threshold"
+                android:textSize="14sp"/>
+        <Spinner
+                android:id="@+id/settings_pull_leave_threshold"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_pull_hint"
+                android:textSize="13sp"/>
+
+        <!-- Library & browse -->
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/settings_section_library"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:paddingBottom="8dp"/>
+
+        <CheckBox
+                android:id="@+id/settings_hide_cover_titles"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_hide_cover_titles"/>
+
+        <CheckBox
+                android:id="@+id/settings_short_network_filenames"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_short_network_filenames"/>
+
+        <CheckBox
+                android:id="@+id/settings_smb_streaming"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_smb_streaming"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/settings_cover_size"
+                android:textSize="14sp"/>
+        <Spinner
+                android:id="@+id/settings_cover_size"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/settings_section_order"
+                android:textStyle="bold"
+                android:textSize="14sp"/>
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_section_order_hint"
+                android:textSize="13sp"/>
+        <LinearLayout
+                android:id="@+id/settings_section_order_list"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"/>
+
+        <Button
+                android:id="@+id/settings_cache_network_covers"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_cache_network_covers"/>
+
+        <TextView
+                android:id="@+id/settings_cache_network_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="13sp"
+                android:text="@string/settings_cache_network_hint"/>
+
+        <!-- Reading defaults -->
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/settings_section_reading"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:paddingBottom="8dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_reading_flow"
+                android:textSize="14sp"/>
+        <Spinner
+                android:id="@+id/settings_reading_flow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <CheckBox
+                android:id="@+id/settings_gpu_reader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_gpu_reader"/>
+
+        <CheckBox
+                android:id="@+id/settings_crop_borders"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_crop_borders"/>
+
+        <CheckBox
+                android:id="@+id/settings_split_spreads"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_split_spreads"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_transition_axis"
+                android:textSize="14sp"/>
+        <Spinner
+                android:id="@+id/settings_transition_axis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_layout_portrait"
+                android:textSize="14sp"/>
+        <Spinner
+                android:id="@+id/settings_layout_portrait"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_layout_landscape"
+                android:textSize="14sp"/>
+        <Spinner
+                android:id="@+id/settings_layout_landscape"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_reading_hint"
+                android:textSize="13sp"/>
+
+        <!-- Appearance -->
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/settings_section_appearance"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:paddingBottom="8dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_theme"
+                android:textSize="14sp"/>
+        <Spinner
+                android:id="@+id/settings_theme"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <!-- Storage -->
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/settings_section_storage"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:paddingBottom="8dp"/>
+
+        <Button
+                android:id="@+id/settings_clear_network_covers"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_clear_network_covers"/>
+
+        <Button
+                android:id="@+id/settings_clear_smb_stage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_clear_smb_stage"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_storage_hint"
+                android:textSize="13sp"/>
+
+        <!-- More -->
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/settings_section_more"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:paddingBottom="8dp"/>
+
+        <Button
+                android:id="@+id/settings_open_connections"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_open_connections"/>
+
+        <Button
+                android:id="@+id/settings_open_about"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_open_about"/>
+
+        <!-- Debug -->
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/settings_section_debug"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:paddingBottom="8dp"/>
+
+        <CheckBox
+                android:id="@+id/settings_debug_feedback"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_debug_feedback"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_debug_feedback_hint"
+                android:textSize="13sp"/>
+    </LinearLayout>
+</ScrollView>

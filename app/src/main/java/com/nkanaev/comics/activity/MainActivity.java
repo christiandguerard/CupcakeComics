@@ -21,6 +21,13 @@ import androidx.fragment.app.FragmentManager;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.navigation.NavigationView.OnNavigationItemSelectedListener;
 import com.nkanaev.comics.R;
+import com.cupcakecomics.cover.FileCoverHandler;
+import com.cupcakecomics.notifications.CupcakeNotifications;
+import com.cupcakecomics.notifications.NotifyPermissionPrompt;
+import com.cupcakecomics.pulllist.PullListWorker;
+import com.cupcakecomics.ui.ConnectionsFragment;
+import com.cupcakecomics.ui.RequestFragment;
+import com.cupcakecomics.ui.SettingsFragment;
 import com.nkanaev.comics.fragment.AboutFragment;
 import com.nkanaev.comics.fragment.BrowserFragment;
 import com.nkanaev.comics.fragment.LibraryFragment;
@@ -35,6 +42,7 @@ public class MainActivity extends AppCompatActivity
         implements FragmentManager.OnBackStackChangedListener {
     private final static String STATE_CURRENT_MENU_ITEM = "STATE_CURRENT_MENU_ITEM";
     private final static String STATE_INITIAL_SCAN_RAN_ALREADY = "INITIAL_SCAN_FINISHED";
+    public static final String EXTRA_OPEN_PULL_LIST = "EXTRA_OPEN_PULL_LIST";
     public static String PACKAGE_NAME;
 
     private DrawerLayout mDrawerLayout;
@@ -84,6 +92,7 @@ public class MainActivity extends AppCompatActivity
 
         mPicasso = new Picasso.Builder(this)
                 .addRequestHandler(new LocalCoverHandler(this))
+                .addRequestHandler(new FileCoverHandler(this))
                 .build();
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.navigation_view);
@@ -127,14 +136,33 @@ public class MainActivity extends AppCompatActivity
         }
 
         if (savedInstanceState == null) {
+            boolean openPull = getIntent() != null && getIntent().getBooleanExtra(EXTRA_OPEN_PULL_LIST, false);
             setFragment(new LibraryFragment());
             mCurrentNavItem = R.id.drawer_menu_library;
             navigationView.getMenu().findItem(mCurrentNavItem).setChecked(true);
+            if (openPull) {
+                // Defer so Library is the back-stack base under the Pull List screen.
+                getWindow().getDecorView().post(() ->
+                        pushFragment(new com.cupcakecomics.ui.PullListFragment()));
+            }
+            PullListWorker.schedule(this);
+            CupcakeNotifications.ensureChannels(this);
+            com.cupcakecomics.reminders.ReminderScheduler.schedule(this);
         }
         else {
             onBackStackChanged();  // force-call method to ensure indicator is shown properly
             mCurrentNavItem = savedInstanceState.getInt(STATE_CURRENT_MENU_ITEM);
             navigationView.getMenu().findItem(mCurrentNavItem).setChecked(true);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        try {
+            CupcakeNotifications.flushPendingPullList(this);
+            NotifyPermissionPrompt.maybeShow(this);
+        } catch (Throwable ignored) {
         }
     }
 
@@ -231,8 +259,17 @@ public class MainActivity extends AppCompatActivity
                     case R.id.drawer_menu_library:
                         setFragment(new LibraryFragment());
                         break;
+                    case R.id.drawer_menu_request:
+                        setFragment(new RequestFragment());
+                        break;
                     case R.id.drawer_menu_browser:
                         setFragment(new BrowserFragment());
+                        break;
+                    case R.id.drawer_menu_connections:
+                        setFragment(new ConnectionsFragment());
+                        break;
+                    case R.id.drawer_menu_settings:
+                        setFragment(new SettingsFragment());
                         break;
                     case R.id.drawer_menu_about:
                         setFragment(new AboutFragment());

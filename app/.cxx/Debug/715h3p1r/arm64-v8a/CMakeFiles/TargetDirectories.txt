@@ -1,0 +1,3 @@
+M:/Project Work/Cupcake Comics/app/.cxx/Debug/715h3p1r/arm64-v8a/CMakeFiles/cupcake_image.dir
+M:/Project Work/Cupcake Comics/app/.cxx/Debug/715h3p1r/arm64-v8a/CMakeFiles/edit_cache.dir
+M:/Project Work/Cupcake Comics/app/.cxx/Debug/715h3p1r/arm64-v8a/CMakeFiles/rebuild_cache.dir

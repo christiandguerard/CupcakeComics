@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="horizontal"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:gravity="center_vertical"
+              android:paddingStart="12dp"
+              android:paddingEnd="12dp"
+              android:paddingTop="10dp"
+              android:paddingBottom="10dp"
+              android:minHeight="112dp"
+              android:background="?attr/selectableItemBackground">
+
+    <ImageView
+            android:id="@+id/request_cover"
+            android:layout_width="72dp"
+            android:layout_height="108dp"
+            android:scaleType="centerCrop"
+            android:background="#1A000000"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_article_24"/>
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp">
+
+        <TextView
+                android:id="@+id/request_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:maxLines="3"
+                android:ellipsize="end"
+                android:textColor="?android:attr/textColorPrimary"/>
+
+        <TextView
+                android:id="@+id/request_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="13sp"
+                android:textColor="?android:attr/textColorSecondary"/>
+    </LinearLayout>
+</LinearLayout>

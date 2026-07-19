@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      Cleartext permitted so Kapowarr can use http:// on arbitrary LAN IPs
+      (NSC cannot express RFC1918 CIDR ranges). Public cleartext is blocked in
+      KapowarrClient / KapowarrEditFragment. Outside-LAN Kapowarr uses HTTPS.
+      SMB is not HTTP and is unaffected.
+    -->
+    <base-config cleartextTrafficPermitted="true"/>
+</network-security-config>

@@ -374,9 +374,14 @@ public final class Utils {
     }
 
     public static File getCoverCacheFile(Comic c) {
+        return getCoverCacheFileForPath(c.getFile().getAbsolutePath());
+    }
+
+    /** Disk cover cache keyed by absolute comic path (works for offline files not in comics.db). */
+    public static File getCoverCacheFileForPath(String absolutePath) {
         CRC32 crc = new CRC32();
-        crc.update(c.getFile().toString().getBytes());
-        return getCoverCacheFile(String.format("%08X", crc.getValue()),"jpg");
+        crc.update(absolutePath.getBytes());
+        return getCoverCacheFile(String.format("%08X", crc.getValue()), "jpg");
     }
 
     private static File getCoverCacheFile(String identifier, String extension) {
@@ -385,8 +390,12 @@ public final class Utils {
     }
 
     public static void deleteCoverCacheFile(Comic comic) {
-        File coverCacheFile = getCoverCacheFile(comic.getFile().getAbsolutePath(), "jpg");
+        File coverCacheFile = getCoverCacheFileForPath(comic.getFile().getAbsolutePath());
         coverCacheFile.delete();
+    }
+
+    public static void deleteCoverCacheFile(String absolutePath) {
+        getCoverCacheFileForPath(absolutePath).delete();
     }
 
     public static ByteArrayInputStream toByteArrayInputStream(InputStream is) throws IOException {

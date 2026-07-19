@@ -22,6 +22,9 @@ import android.text.style.StyleSpan;
 import android.util.Log;
 import android.view.*;
 import android.widget.*;
+import android.widget.TextView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.StyleRes;
@@ -32,8 +35,18 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.LifecycleOwnerKt;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import com.cupcakecomics.settings.CoverSize;
+import com.cupcakecomics.settings.CupcakeSettings;
+import com.cupcakecomics.settings.LibrarySection;
+import com.cupcakecomics.ui.CoverGridHelper;
+import com.cupcakecomics.ui.LocalFilesLibraryController;
+import com.cupcakecomics.ui.SmbBrowseFragment;
+import com.cupcakecomics.ui.OfflineLibraryController;
+import com.cupcakecomics.ui.PullListLibraryController;
+import com.cupcakecomics.ui.SmbLibraryController;
 import com.nkanaev.comics.BuildConfig;
 import com.nkanaev.comics.Constants;
 import com.nkanaev.comics.MainApplication;
@@ -75,6 +88,24 @@ public class LibraryFragment extends Fragment
     private Handler mUpdateHandler = new UpdateHandler(this);
     private MenuItem mRefreshItem;
     private int mSort = R.id.sort_name_asc;
+    private SmbLibraryController mSmbLibraryController;
+    private OfflineLibraryController mOfflineLibraryController;
+    private PullListLibraryController mPullListLibraryController;
+    private LocalFilesLibraryController mLocalFilesLibraryController;
+    private boolean mHasSmbShares = false;
+    private boolean mHasOfflineComics = false;
+    private boolean mHasPullItems = false;
+    private boolean mHasLocalFiles = false;
+    private TextView mMediaHeader;
+    private ViewGroup mSectionsContainer;
+
+    private final ActivityResultLauncher<String[]> mPickLocalFile =
+            registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+                if (uri == null) return;
+                if (mLocalFilesLibraryController != null) {
+                    mLocalFilesLibraryController.importUri(uri);
+                }
+            });
 
     public LibraryFragment() {
     }
@@ -156,6 +187,27 @@ public class LibraryFragment extends Fragment
     }
 
     @Override
+    public void onDestroyView() {
+        if (mSmbLibraryController != null) {
+            mSmbLibraryController.stop();
+            mSmbLibraryController = null;
+        }
+        if (mOfflineLibraryController != null) {
+            mOfflineLibraryController.stop();
+            mOfflineLibraryController = null;
+        }
+        if (mPullListLibraryController != null) {
+            mPullListLibraryController.stop();
+            mPullListLibraryController = null;
+        }
+        if (mLocalFilesLibraryController != null) {
+            mLocalFilesLibraryController.stop();
+            mLocalFilesLibraryController = null;
+        }
+        super.onDestroyView();
+    }
+
+    @Override
     public void onPause() {
         Scanner.getInstance().removeUpdateHandler(mUpdateHandler);
         setLoading(false);
@@ -188,12 +240,110 @@ public class LibraryFragment extends Fragment
         int spacing = (int) getResources().getDimension(R.dimen.grid_margin);
         mFolderListView.addItemDecoration(new GridSpacingItemDecoration(numColumns, spacing));
 
-        // some performance optimizations
-        mFolderListView.setHasFixedSize(true);
+        mFolderListView.setHasFixedSize(false);
         mFolderListView.setItemViewCacheSize(Math.max(4 * numColumns,40));
-        //mFolderListView.getRecycledViewPool().setMaxRecycledViews();
+        mFolderListView.setNestedScrollingEnabled(false);
 
         mEmptyView = view.findViewById(R.id.library_empty);
+
+        TextView smbHeader = view.findViewById(R.id.library_smb_header);
+        RecyclerView smbList = view.findViewById(R.id.library_smb_list);
+        mSmbLibraryController = new SmbLibraryController(
+                requireContext(),
+                LifecycleOwnerKt.getLifecycleScope(getViewLifecycleOwner()),
+                smbHeader,
+                smbList,
+                share -> {
+                    ((MainActivity) getActivity()).pushFragment(SmbBrowseFragment.newInstance(share.getId()));
+                    return kotlin.Unit.INSTANCE;
+                },
+                hasShares -> {
+                    mHasSmbShares = hasShares;
+                    showEmptyMessageIfNeeded();
+                    return kotlin.Unit.INSTANCE;
+                }
+        );
+        mSmbLibraryController.start();
+
+        View pullHeaderRow = view.findViewById(R.id.library_pull_header_row);
+        TextView pullHeader = view.findViewById(R.id.library_pull_header);
+        View pullSettings = view.findViewById(R.id.library_pull_settings);
+        ImageView pullChevron = view.findViewById(R.id.library_pull_chevron);
+        RecyclerView pullList = view.findViewById(R.id.library_pull_list);
+        TextView pullEmpty = view.findViewById(R.id.library_pull_empty);
+        mPullListLibraryController = new PullListLibraryController(
+                requireContext(),
+                LifecycleOwnerKt.getLifecycleScope(getViewLifecycleOwner()),
+                pullHeaderRow,
+                pullHeader,
+                pullSettings,
+                pullChevron,
+                pullList,
+                pullEmpty,
+                hasPull -> {
+                    mHasPullItems = hasPull;
+                    showEmptyMessageIfNeeded();
+                    return kotlin.Unit.INSTANCE;
+                }
+        );
+        mPullListLibraryController.start();
+
+        View offlineHeaderRow = view.findViewById(R.id.library_offline_header_row);
+        TextView offlineHeader = view.findViewById(R.id.library_offline_header);
+        ImageView offlineChevron = view.findViewById(R.id.library_offline_chevron);
+        RecyclerView offlineList = view.findViewById(R.id.library_offline_list);
+        mOfflineLibraryController = new OfflineLibraryController(
+                requireContext(),
+                LifecycleOwnerKt.getLifecycleScope(getViewLifecycleOwner()),
+                offlineHeaderRow,
+                offlineHeader,
+                offlineChevron,
+                offlineList,
+                hasOffline -> {
+                    mHasOfflineComics = hasOffline;
+                    showEmptyMessageIfNeeded();
+                    return kotlin.Unit.INSTANCE;
+                }
+        );
+        mOfflineLibraryController.start();
+
+        View localSection = view.findViewById(R.id.library_section_local);
+        View localHeaderRow = view.findViewById(R.id.library_local_header_row);
+        TextView localHeader = view.findViewById(R.id.library_local_header);
+        ImageView localChevron = view.findViewById(R.id.library_local_chevron);
+        RecyclerView localList = view.findViewById(R.id.library_local_list);
+        View localAdd = view.findViewById(R.id.library_local_add);
+        mLocalFilesLibraryController = new LocalFilesLibraryController(
+                requireContext(),
+                LifecycleOwnerKt.getLifecycleScope(getViewLifecycleOwner()),
+                localSection,
+                localHeaderRow,
+                localHeader,
+                localChevron,
+                localList,
+                localAdd,
+                () -> {
+                    mPickLocalFile.launch(new String[]{
+                            "application/zip",
+                            "application/x-cbz",
+                            "application/x-cbr",
+                            "application/pdf",
+                            "application/x-pdf",
+                            "*/*"
+                    });
+                    return kotlin.Unit.INSTANCE;
+                },
+                hasLocal -> {
+                    mHasLocalFiles = hasLocal;
+                    showEmptyMessageIfNeeded();
+                    return kotlin.Unit.INSTANCE;
+                }
+        );
+        mLocalFilesLibraryController.start();
+
+        mMediaHeader = view.findViewById(R.id.library_media_header);
+        mSectionsContainer = view.findViewById(R.id.library_sections);
+        applySectionOrder();
 
         showEmptyMessageIfNeeded();
         getActivity().setTitle(R.string.menu_library);
@@ -201,6 +351,25 @@ public class LibraryFragment extends Fragment
         ((MainActivity) getActivity()).setSubTitle(Utils.appendSlashIfMissing(folder));
 
         return view;
+    }
+
+    private void applySectionOrder() {
+        if (mSectionsContainer == null) return;
+        CupcakeSettings settings = new CupcakeSettings(requireContext());
+        java.util.List<LibrarySection> order = settings.getLibrarySectionOrder();
+        java.util.Map<LibrarySection, View> map = new java.util.HashMap<>();
+        map.put(LibrarySection.PULL, mSectionsContainer.findViewById(R.id.library_section_pull));
+        map.put(LibrarySection.LOCAL, mSectionsContainer.findViewById(R.id.library_section_local));
+        map.put(LibrarySection.OFFLINE, mSectionsContainer.findViewById(R.id.library_section_offline));
+        map.put(LibrarySection.SMB, mSectionsContainer.findViewById(R.id.library_section_smb));
+        map.put(LibrarySection.MEDIA, mSectionsContainer.findViewById(R.id.library_section_media));
+        for (LibrarySection section : order) {
+            View child = map.get(section);
+            if (child != null) {
+                mSectionsContainer.removeView(child);
+                mSectionsContainer.addView(child);
+            }
+        }
     }
 
     @SuppressLint("RestrictedApi")
@@ -499,6 +668,9 @@ public class LibraryFragment extends Fragment
 
     private void onRefresh(boolean refreshAll) {
         Scanner.getInstance().scanLibrary(null, refreshAll);
+        if (mSmbLibraryController != null) {
+            mSmbLibraryController.refreshAllStats();
+        }
         String msg = getResources().getString( refreshAll ? R.string.reload_msg_slow : R.string.reload_msg_fast );
         Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
         setLoading(true);
@@ -593,9 +765,21 @@ public class LibraryFragment extends Fragment
     }
 
     private void showEmptyMessageIfNeeded() {
-        boolean show = mComicsListManager.getCount() < 1;
+        boolean hasMedia = mComicsListManager != null && mComicsListManager.getCount() >= 1;
+        boolean show = !hasMedia && !mHasSmbShares && !mHasOfflineComics && !mHasPullItems && !mHasLocalFiles;
         mEmptyView.setVisibility(show ? View.VISIBLE : View.GONE);
-        mRefreshLayout.setEnabled(!show);
+        mRefreshLayout.setEnabled(!show || mHasSmbShares || mHasOfflineComics || mHasPullItems || mHasLocalFiles);
+        if (mMediaHeader != null) {
+            mMediaHeader.setVisibility(hasMedia ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private int calculateNumColumns() {
+        CoverSize size = new CupcakeSettings(requireContext()).getCoverSize();
+        int columnWidth = CoverGridHelper.INSTANCE.mediaColumnWidthPx(requireContext(), size);
+        int deviceWidth = Utils.getDeviceWidth(getActivity());
+        float value = (float) deviceWidth / columnWidth;
+        return Math.max(1, Math.round(value));
     }
 
     public static class UpdateHandler extends Handler {
@@ -618,15 +802,6 @@ public class LibraryFragment extends Fragment
                 fragment.refreshLibraryFinished();
             }
         }
-    }
-
-    private int calculateNumColumns() {
-        int deviceWidth = Utils.getDeviceWidth(getActivity());
-        int columnWidth = getActivity().getResources().getInteger(R.integer.grid_group_column_width);
-
-        float value = (float) deviceWidth / columnWidth;
-
-        return Math.round(value);
     }
 
     private final class GroupGridAdapter extends RecyclerView.Adapter {

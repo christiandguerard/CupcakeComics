@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+            android:id="@+id/action_monitor_folders"
+            android:title="@string/pull_list_monitor"
+            app:showAsAction="ifRoom"/>
+    <item
+            android:id="@+id/action_select_all_folders"
+            android:title="@string/action_select_all"
+            app:showAsAction="never"/>
+</menu>

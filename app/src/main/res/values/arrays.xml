@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="settings_scan_interval_labels">
+        <item>Every 15 minutes</item>
+        <item>Every 30 minutes</item>
+        <item>Every hour</item>
+        <item>Every 2 hours</item>
+        <item>Every 6 hours</item>
+    </string-array>
+    <integer-array name="settings_scan_interval_values">
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>120</item>
+        <item>360</item>
+    </integer-array>
+
+    <string-array name="settings_leave_threshold_labels">
+        <item>80% of pages</item>
+        <item>90% of pages</item>
+        <item>95% of pages</item>
+        <item>Last page (100%)</item>
+    </string-array>
+
+    <string-array name="settings_reading_flow_labels">
+        <item>Left to right</item>
+        <item>Right to left</item>
+        <item>Top to bottom</item>
+    </string-array>
+
+    <string-array name="settings_transition_axis_labels">
+        <item>Horizontal only</item>
+        <item>Vertical only</item>
+        <item>Horizontal or vertical</item>
+    </string-array>
+
+    <string-array name="settings_pages_layout_labels">
+        <item>Single page</item>
+        <item>Double page</item>
+        <item>Double (cover alone)</item>
+        <item>Continuous vertical</item>
+        <item>Continuous horizontal</item>
+    </string-array>
+
+    <string-array name="settings_theme_labels">
+        <item>@string/settings_theme_system</item>
+        <item>@string/settings_theme_light</item>
+        <item>@string/settings_theme_dark</item>
+    </string-array>
+
+    <string-array name="settings_hour_labels">
+        <item>12:00 AM</item>
+        <item>1:00 AM</item>
+        <item>2:00 AM</item>
+        <item>3:00 AM</item>
+        <item>4:00 AM</item>
+        <item>5:00 AM</item>
+        <item>6:00 AM</item>
+        <item>7:00 AM</item>
+        <item>8:00 AM</item>
+        <item>9:00 AM</item>
+        <item>10:00 AM</item>
+        <item>11:00 AM</item>
+        <item>12:00 PM</item>
+        <item>1:00 PM</item>
+        <item>2:00 PM</item>
+        <item>3:00 PM</item>
+        <item>4:00 PM</item>
+        <item>5:00 PM</item>
+        <item>6:00 PM</item>
+        <item>7:00 PM</item>
+        <item>8:00 PM</item>
+        <item>9:00 PM</item>
+        <item>10:00 PM</item>
+        <item>11:00 PM</item>
+    </string-array>
+
+    <string-array name="reminder_frequency_labels">
+        <item>Daily</item>
+        <item>Weekly</item>
+        <item>Monthly</item>
+    </string-array>
+
+    <string-array name="reminder_page_mode_labels">
+        <item>Resume progress</item>
+        <item>Page-a-day</item>
+    </string-array>
+
+    <string-array name="reminder_weekday_labels">
+        <item>Sunday</item>
+        <item>Monday</item>
+        <item>Tuesday</item>
+        <item>Wednesday</item>
+        <item>Thursday</item>
+        <item>Friday</item>
+        <item>Saturday</item>
+    </string-array>
+    <string-array name="settings_cover_size_labels">
+        <item>Small</item>
+        <item>Medium</item>
+        <item>Large</item>
+    </string-array>
+</resources>

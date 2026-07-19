@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- do NOT translate app_name ;) -->
-    <string name="app_name" translatable="false">Bubble2</string>
+    <string name="app_name" translatable="false">Cupcake Comics</string>
     <string name="app_description">Android comic book reader</string>
     <string name="app_link" translatable="false">https://github.com/edeso/bubble2</string>
+    <string name="app_fork_note" translatable="false">Cupcake Comics is a fork of Bubble2</string>
     <string name="app_license" translatable="false">GPL-3.0</string>
 
     <string name="about_version">Version</string>
@@ -48,8 +49,271 @@
     <string name="drawer_close">Close navigation drawer</string>
 
     <string name="menu_library">Library</string>
+    <string name="menu_pull_list">Pull List</string>
     <string name="menu_browser">Browser</string>
+    <string name="menu_connections">Connections</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_request">Request</string>
     <string name="menu_about">About</string>
+
+    <string name="connections_smb_section">SMB shares</string>
+    <string name="connections_smb_empty">No SMB shares yet. Tap + to add your comic file server.</string>
+    <string name="connections_add">+</string>
+    <string name="connections_add_choose_title">Add connection</string>
+    <string name="connections_add_smb">SMB share</string>
+    <string name="connections_add_smb_title">Add SMB share</string>
+    <string name="connections_add_kapowarr_option">Kapowarr</string>
+    <string name="connections_delete_title">Remove share?</string>
+    <string name="connections_delete_message">Remove “%1$s” from this device? Files on the server are not changed.</string>
+    <string name="connections_deleted">Share removed</string>
+
+    <string name="smb_display_name">Display name</string>
+    <string name="smb_host">Host (IP or hostname)</string>
+    <string name="smb_port">Port</string>
+    <string name="smb_share">Share name</string>
+    <string name="smb_start_path">Start path (optional)</string>
+    <string name="smb_domain">Domain / workgroup (optional)</string>
+    <string name="smb_username">Username</string>
+    <string name="smb_password">Password</string>
+    <string name="smb_guest">Guest access</string>
+    <string name="smb_test">Test connection</string>
+    <string name="smb_save">Save</string>
+    <string name="smb_testing">Testing…</string>
+    <string name="smb_test_ok">Connected successfully</string>
+    <string name="smb_test_fail">Connection failed: %1$s</string>
+    <string name="smb_host_share_required">Host and share name are required</string>
+    <string name="smb_share_required">Share name is required — for your server use Comics</string>
+    <string name="smb_user_required">Username is required unless Guest is checked</string>
+    <string name="smb_guest_warning">Guest is usually wrong for this server — uncheck it and use Comics / your password</string>
+    <string name="smb_saved">Share saved</string>
+    <string name="smb_share_missing">Share not found</string>
+    <string name="smb_browse_count">%1$d items</string>
+    <string name="smb_browse_fail">Browse failed: %1$s</string>
+    <string name="smb_entry_folder">Folder</string>
+    <string name="smb_not_comic">That file isn’t a supported comic archive</string>
+    <string name="library_smb_header">Network libraries</string>
+    <string name="library_smb_scanning">Scanning…</string>
+    <string name="library_smb_stats">%1$d comics · %2$s</string>
+    <string name="smb_staging">Downloading comic…</string>
+    <string name="smb_download_cancel">Cancel</string>
+    <string name="smb_stage_fail">Could not open comic: %1$s</string>
+    <string name="smb_open_later">Opening comics from SMB arrives next — browse works now</string>
+    <string name="smb_download_bytes">%1$s / %2$s</string>
+    <string name="menu_actions">Actions</string>
+    <string name="action_mark_read">Mark as read</string>
+    <string name="action_mark_unread">Mark as unread</string>
+    <string name="action_download_offline">Download for offline</string>
+    <string name="action_delete_offline">Remove downloads</string>
+    <string name="action_export_read">Export read history</string>
+    <string name="action_select_all">Select all comics</string>
+    <string name="library_offline_header">Downloaded comics</string>
+    <string name="library_offline_empty">No offline comics yet</string>
+    <string name="library_offline_stats">%1$s · %2$s</string>
+    <string name="library_offline_toggle">Expand or collapse downloads</string>
+    <string name="library_local_header">Local files</string>
+    <string name="library_local_add">Add local file</string>
+    <string name="library_local_toggle">Expand or collapse local files</string>
+    <string name="library_local_added">Added to Local files</string>
+    <string name="library_local_add_failed">Couldn’t add file: %1$s</string>
+    <string name="local_file_missing">Local file missing — removed from list</string>
+    <string name="deleted_local_toast">Removed %1$d local file(s)</string>
+    <string name="library_pull_toggle">Expand or collapse Pull List</string>
+    <string name="library_pull_empty_short">Nothing unread — tap the gear to open your Pull List or manage folders</string>
+    <string name="library_media_header">Media library</string>
+    <string name="selection_count">%1$d selected</string>
+    <string name="read_badge"> · Read</string>
+    <string name="marked_read_toast">Marked %1$d comic(s) as read</string>
+    <string name="marked_unread_toast">Marked %1$d comic(s) as unread</string>
+    <string name="deleted_offline_toast">Removed %1$d download(s)</string>
+    <string name="export_read_share_title">Cupcake Comics read history</string>
+    <string name="offline_missing">Offline file missing</string>
+    <string name="downloaded_offline_toast">Downloaded %1$d comic(s) for offline</string>
+    <string name="pull_list_empty">Nothing unread in your monitored folders.\nLong-press series folders in SMB browse to monitor them — new comics arrive here as unread.</string>
+    <string name="pull_list_no_folders">No monitored folders — enroll one from an SMB browse</string>
+    <string name="pull_list_scan_done">Scan done: %1$d new unread · %2$d comics checked</string>
+    <string name="pull_list_progress">p. %1$d / %2$d</string>
+    <string name="pull_list_missing">Missing on share</string>
+    <string name="pull_list_ignore">Mark read / remove</string>
+    <string name="pull_list_monitor">Monitor for Pull List</string>
+    <string name="pull_list_monitored">Folder monitored — existing comics stay off the list; new ones appear as unread</string>
+    <string name="pull_list_monitored_many">%1$d folders monitored — enroll series folders, not individual volumes</string>
+    <string name="read_checkmark_cd">Read</string>
+    <string name="pull_list_channel">Pull List</string>
+    <string name="pull_list_channel_desc">Alerts when new unread comics appear on your Pull List</string>
+    <string name="downloads_channel">Downloads</string>
+    <string name="downloads_channel_desc">Alerts when offline downloads finish</string>
+    <string name="pull_list_notify_title">New Pull List issues</string>
+    <string name="pull_list_notify_title_one">New on Pull List</string>
+    <string name="pull_list_notify_title_many">%1$d new on Pull List</string>
+    <string name="pull_list_notify_body">%1$d new unread comic(s)</string>
+    <string name="pull_list_notify_more">+%1$d more</string>
+    <string name="downloads_notify_title_one">Downloaded for offline</string>
+    <string name="downloads_notify_title_many">%1$d comics downloaded</string>
+
+    <string name="notify_prompt_title">Stay updated?</string>
+    <string name="notify_prompt_message">Cupcake Comics can notify you when new issues land on your Pull List. You can change this anytime in Settings.</string>
+    <string name="notify_prompt_allow">Allow</string>
+    <string name="notify_prompt_not_now">Not now</string>
+
+    <string name="settings_notify_digest">Group multiple new issues into one notification</string>
+    <string name="settings_notify_downloads">Notify when offline downloads finish</string>
+    <string name="settings_offline_download_background">Download offline comics in the background</string>
+    <string name="settings_offline_download_background_hint">When on, multi-select Download for offline runs without blocking the screen. You can still choose Run in background from the progress dialog.</string>
+    <string name="smb_download_run_background">Run in background</string>
+    <string name="offline_download_queued">Downloading %1$d comic(s) in the background</string>
+    <string name="offline_download_progress_title">Downloading offline %1$d / %2$d</string>
+    <string name="pull_list_open">Open Pull List</string>
+    <string name="pull_list_manage_folders">Manage monitored folders</string>
+    <string name="library_pull_settings_cd">Pull List options</string>
+    <string name="monitored_folders_title">Monitored folders</string>
+    <string name="monitored_folders_empty">No monitored folders yet.\nLong-press series folders in SMB browse to enroll them.</string>
+    <string name="monitored_folders_unenroll">Stop</string>
+    <string name="monitored_folders_unenroll_confirm">Stop monitoring this folder? Comics already on your Pull List stay until you mark them read.</string>
+    <string name="monitored_folders_unenrolled">Stopped monitoring folder</string>
+    <string name="pull_list_tab_unread">Unread</string>
+    <string name="pull_list_tab_estimates">Estimates</string>
+    <string name="pull_list_eta_header">Nothing unread right now.</string>
+    <string name="pull_list_eta_none">Not enough history yet to estimate the next issue.</string>
+    <string name="pull_estimates_empty">No monitored series yet.\nLong-press series folders in SMB browse, or add via Kapowarr Request.</string>
+    <string name="pull_eta_days">%1$d days until next</string>
+    <string name="pull_eta_today">Next issue any day now</string>
+    <string name="pull_eta_tomorrow">Next issue tomorrow</string>
+    <string name="pull_eta_overdue">Overdue — usually every ~%1$d days</string>
+    <string name="pull_eta_ended">Series run looks finished</string>
+    <string name="pull_eta_unknown">Not enough history for an estimate</string>
+    <string name="pull_status_ongoing">Ongoing</string>
+    <string name="pull_status_ended">Ended</string>
+    <string name="pull_status_unknown">Unknown</string>
+    <string name="settings_comicvine_key">ComicVine API key (optional)</string>
+    <string name="settings_comicvine_key_hint">Paste key from comicvine.gamespot.com/api/</string>
+    <string name="settings_comicvine_key_help">Used to detect finished series runs and refine Pull List release estimates. Kapowarr is used when available.</string>
+    <string name="settings_quiet_hours">Quiet hours (buffer alerts)</string>
+    <string name="settings_quiet_from">From</string>
+    <string name="settings_quiet_to">to</string>
+    <string name="settings_notify_hint">During quiet hours, Pull List alerts wait and arrive as a digest afterward. Downloads use a separate quieter channel.</string>
+
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_section_pull">Pull List</string>
+    <string name="settings_section_library">Library &amp; browse</string>
+    <string name="settings_section_reading">Reading defaults</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_storage">Storage</string>
+    <string name="settings_section_more">More</string>
+
+    <string name="settings_pull_notify">Notify when new unread comics appear</string>
+    <string name="settings_notify_status_allowed">System permission: allowed</string>
+    <string name="settings_notify_status_blocked">System permission: blocked — notifications won’t show</string>
+    <string name="settings_notify_grant">Allow notifications</string>
+    <string name="settings_notify_system">Open system notification settings</string>
+    <string name="settings_notify_denied_toast">Notification permission denied</string>
+
+    <string name="settings_pull_scan_interval">Background scan interval</string>
+    <string name="settings_pull_scan_wifi">Scan only on Wi‑Fi</string>
+    <string name="settings_pull_auto_download">Auto-download new Pull List comics for offline</string>
+    <string name="settings_pull_wifi_only">Auto-download only on Wi‑Fi</string>
+    <string name="settings_pull_leave_threshold">Leave Pull List after reading</string>
+    <string name="settings_pull_hint">Monitored folders: existing comics are baseline (read). Later arrivals show as unread. Mark read or reach the leave threshold to remove them.</string>
+
+    <string name="settings_hide_cover_titles">Hide titles on cover grids</string>
+    <string name="settings_short_network_filenames">Shorten comic filenames to “Series - #Issue”</string>
+    <string name="settings_smb_streaming">Stream CBZ over SMB when possible (no full download)</string>
+    <string name="settings_cover_size">Cover size on Library home</string>
+    <string name="settings_section_order">Library home section order</string>
+    <string name="settings_section_order_hint">Tap Move up / Move down to rearrange sections</string>
+    <string name="settings_section_move_up">Up</string>
+    <string name="settings_section_move_down">Down</string>
+    <string name="library_order_pull">Pull List</string>
+    <string name="library_order_local">Local files</string>
+    <string name="library_order_offline">Downloaded comics</string>
+    <string name="library_order_smb">Network libraries</string>
+    <string name="library_order_media">Media library</string>
+    <string name="settings_cache_network_covers">Cache network thumbnails</string>
+    <string name="settings_cache_network_hint">Builds small covers for SMB comics so browse can show thumbnails. May take a while on large shares.</string>
+    <string name="settings_cache_network_running">Caching… %1$d / %2$d — %3$s</string>
+    <string name="settings_cache_network_done">Done — %1$d new, %2$d already cached, %3$d failed</string>
+    <string name="settings_cache_network_none">No SMB shares to scan</string>
+    <string name="settings_cache_network_cancel">Cancel</string>
+
+    <string name="settings_reading_flow">Reading direction</string>
+    <string name="settings_gpu_reader">Use GPU reader (recommended)</string>
+    <string name="settings_crop_borders">Crop page borders by default</string>
+    <string name="settings_split_spreads">Split double-page spreads</string>
+    <string name="settings_transition_axis">Page turn gestures</string>
+    <string name="settings_layout_portrait">Portrait page layout</string>
+    <string name="settings_layout_landscape">Landscape page layout</string>
+    <string name="settings_reading_hint">Fine-grained fit, color, and per-book options stay in the reader menu while a comic is open.</string>
+
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+
+    <string name="settings_clear_network_covers">Clear network cover cache</string>
+    <string name="settings_clear_smb_stage">Clear temporary SMB stage cache</string>
+    <string name="settings_storage_cleared">Cleared</string>
+    <string name="settings_storage_hint">Offline downloads in Library are kept. Stage cache holds at most two comics for open-to-read.</string>
+
+    <string name="settings_open_connections">Connections (SMB &amp; Kapowarr)</string>
+    <string name="settings_open_about">About &amp; licenses</string>
+
+    <!-- Keep legacy ids used elsewhere -->
+    <string name="settings_pull_section">Pull List</string>
+    <string name="settings_library_section">Library</string>
+    <string name="settings_network_section">Network covers</string>
+
+    <string name="connections_kapowarr_section">Kapowarr</string>
+    <string name="connections_kapowarr_empty">No Kapowarr server yet. Tap + to add one.</string>
+    <string name="connections_add_kapowarr">Add Kapowarr</string>
+    <string name="connections_delete_kap_title">Remove Kapowarr profile?</string>
+    <string name="connections_delete_kap_message">Remove %1$s?</string>
+
+    <string name="kapowarr_display_name">Display name</string>
+    <string name="kapowarr_base_url">Base URL</string>
+    <string name="kapowarr_host_label">Kapowarr address</string>
+    <string name="kapowarr_host_hint">192.168.1.50, kapowarr.example.com, or https://…</string>
+    <string name="kapowarr_api_key">API key</string>
+    <string name="kapowarr_api_key_hint">From Kapowarr → Settings → General</string>
+    <string name="kapowarr_setup_blurb">Enter your Kapowarr address and API key. LAN IPs use http://:5656 by default; domains use https:// (great for port-forwarded hosts like kapowarr.example.com).</string>
+    <string name="kapowarr_connect_save">Connect &amp; Save</string>
+    <string name="kapowarr_lan_http_ack">Allow cleartext HTTP on my local network</string>
+    <string name="kapowarr_test">Test</string>
+    <string name="kapowarr_save">Save</string>
+    <string name="kapowarr_testing">Connecting to Kapowarr…</string>
+    <string name="kapowarr_test_ok">Connected (%1$s)</string>
+    <string name="kapowarr_saved">Kapowarr connected</string>
+    <string name="kapowarr_required">Base URL and API key are required</string>
+    <string name="kapowarr_required_simple">Enter the Kapowarr address and API key</string>
+    <string name="kapowarr_need_lan_ack">Check “Allow cleartext HTTP…” for LAN http:// servers</string>
+    <string name="kapowarr_err_auth">Invalid API key</string>
+    <string name="kapowarr_err_unreachable">Can’t reach Kapowarr — check the address, HTTPS/port-forward, and that the server is up</string>
+    <string name="kapowarr_err_cleartext">HTTP blocked — use a LAN address (192.168.x.x) or HTTPS</string>
+    <string name="kapowarr_err_public_http">Public HTTP isn’t allowed. Use a private LAN IP or HTTPS.</string>
+    <string name="kapowarr_err_no_root">No root folders in Kapowarr — add one in Kapowarr first</string>
+    <string name="kapowarr_err_already">Already in Kapowarr library</string>
+    <string name="kapowarr_err_unknown">Kapowarr error</string>
+
+    <string name="request_search_hint">Search ComicVine via Kapowarr</string>
+    <string name="request_search">Search</string>
+    <string name="request_searching">Searching…</string>
+    <string name="request_results_count">%1$d results</string>
+    <string name="request_no_profile">Add Kapowarr under Connections first</string>
+    <string name="request_setup_prompt">Connect Kapowarr once (address + API key), then you can search and request comics here.</string>
+    <string name="request_using_profile">Using %1$s</string>
+    <string name="request_adding">Adding to Kapowarr…</string>
+    <string name="request_added">Added — auto search started</string>
+    <string name="request_add_to_pull_message">Add this series to your Pull List and get updates when new issues arrive?</string>
+    <string name="request_add_to_pull_yes">Add to Pull List</string>
+    <string name="request_add_to_pull_no">Not now</string>
+    <string name="request_pull_choose_library">Choose the network library containing this series</string>
+    <string name="request_pull_no_share">Add an SMB network library before adding this series to your Pull List.</string>
+    <string name="request_pull_added">%1$s was added to your Pull List updates.</string>
+    <string name="request_already_added">Already added</string>
+    <string name="request_queue_header">Download queue</string>
+    <string name="request_queue_empty">Nothing downloading right now</string>
+    <string name="request_queue_count">Download queue (%1$d)</string>
+    <string name="request_queue_row">%1$s · %2$s</string>
+    <string name="request_queue_progress_pct">%1$d%%</string>
+    <string name="request_queue_unknown_size">downloading</string>
 
     <string name="library_header_recent">Recent</string>
     <string name="library_header_all">All</string>
@@ -79,4 +343,114 @@
 
     <string name="library_empty">Your collection seems empty. Click \"folder\" icon to select library directory.</string>
     <string name="warning_missing_file">Missing file. Please update the library</string>
+
+    <!-- Cupcake GPU reader -->
+    <string name="reader_close">Close reader</string>
+    <string name="reader_options">Additional options</string>
+    <string name="reader_share">Share page</string>
+    <string name="reader_share_page">Share full page</string>
+    <string name="reader_share_crop">Crop &amp; share</string>
+    <string name="reader_share_chooser">Share page</string>
+    <string name="reader_crop_share">Share crop</string>
+    <string name="reader_crop_title">Crop page</string>
+    <string name="reader_share_failed">Couldn’t share this page</string>
+    <string name="reader_reading_flow">Reading flow</string>
+    <string name="reader_fit_options">Fit options</string>
+    <string name="reader_pages_layout">Pages layout</string>
+    <string name="reader_page_transitions">Page transitions</string>
+    <string name="reader_color_corrections">Color corrections</string>
+    <string name="reader_bookmark">Bookmark</string>
+    <string name="reader_thumbnails">Thumbnails</string>
+    <string name="reader_toc">Table of contents</string>
+    <string name="reader_flow_ltr">Comics (left to right)</string>
+    <string name="reader_flow_rtl">Manga (right to left)</string>
+    <string name="reader_flow_ttb">Magazine (top to bottom)</string>
+    <string name="reader_fit_screen">Fit to screen</string>
+    <string name="reader_fit_full">Full size</string>
+    <string name="reader_fit_width">Fit width</string>
+    <string name="reader_fit_height">Fit height</string>
+    <string name="reader_layout_single">Single page</string>
+    <string name="reader_layout_double">Double page</string>
+    <string name="reader_layout_double_cover">Double page with cover</string>
+    <string name="reader_layout_cont_v">Continuous vertical</string>
+    <string name="reader_layout_cont_h">Continuous horizontal</string>
+    <string name="reader_trans_translate">Translate</string>
+    <string name="reader_trans_page">Page</string>
+    <string name="reader_trans_inplace">In-place</string>
+    <string name="reader_trans_scale">Scale</string>
+    <string name="reader_trans_axis">Swipe direction</string>
+    <string name="reader_trans_axis_h">Horizontal only (left / right)</string>
+    <string name="reader_trans_axis_v">Vertical only (up / down)</string>
+    <string name="reader_trans_axis_both">Both (right or down advances)</string>
+    <string name="reader_crop_borders">Crop borders</string>
+    <string name="reader_lock_rotation">Lock rotation</string>
+    <string name="reader_split_spreads">Split wide spreads</string>
+    <string name="reader_export_ok">Page exported</string>
+    <string name="reader_export_open">Open</string>
+    <string name="reader_wb">White balance</string>
+    <string name="reader_vibrance">Vibrance</string>
+    <string name="reader_gamma">Gamma</string>
+    <string name="reader_streaming">Streaming</string>
+
+    <string name="settings_section_reminders">Reminders</string>
+    <string name="settings_reminders_hint">Schedule nudges to read Pull List comics or a specific book. Tap a notification to jump straight to the list or page.</string>
+    <string name="settings_reminders_manage">Manage reminders</string>
+
+    <string name="settings_section_debug">Debug</string>
+    <string name="settings_debug_feedback">In-app feedback (floating button)</string>
+    <string name="settings_debug_feedback_hint">Shows a pencil button on every screen. Tap it to capture a screenshot and UI context into a markdown file under Downloads/CupcakeFeedback (also copied to the clipboard). Pull into the project feedback/ folder to review and send to Cursor.</string>
+    <string name="feedback_fab_cd">Send feedback</string>
+    <string name="feedback_dialog_title">Send feedback</string>
+    <string name="feedback_dialog_message">Describe what looks wrong or what you want changed. A screenshot and current screen context are included automatically.</string>
+    <string name="feedback_note_hint">What should we look at?</string>
+    <string name="feedback_submit">Save report</string>
+    <string name="feedback_saved_toast">Feedback saved to %1$s (markdown also on clipboard)</string>
+    <string name="feedback_failed_toast">Feedback failed: %1$s</string>
+    <string name="feedback_enabled_toast">Feedback button on</string>
+    <string name="feedback_disabled_toast">Feedback button off</string>
+
+    <string name="reminders_channel">Reading reminders</string>
+    <string name="reminders_channel_desc">Scheduled reminders for Pull List and book reading</string>
+    <string name="reminder_pull_notify_title">Time to read your Pull List</string>
+    <string name="reminder_pull_notify_body">%1$d unread comic(s) waiting</string>
+    <string name="reminder_book_notify_title">Read %1$s</string>
+    <string name="reminder_book_notify_body">Continue at page %1$d</string>
+    <string name="reminder_book_finished_title">Reading reminder complete</string>
+    <string name="reminder_book_finished_body">You reached the end of %1$s</string>
+
+    <string name="reminders_title">Reminders</string>
+    <string name="reminders_empty">No reminders yet. Add a Pull List nudge or a book reminder below.</string>
+    <string name="reminders_add_pull">Add Pull List reminder</string>
+    <string name="reminders_add_book">Add book reminder</string>
+    <string name="reminders_edit_pull">Pull List reminder</string>
+    <string name="reminders_edit_book">Book reminder</string>
+    <string name="reminders_delete">Delete reminder</string>
+    <string name="reminders_delete_confirm">Delete this reminder?</string>
+    <string name="reminders_saved">Reminder saved</string>
+    <string name="reminders_deleted">Reminder deleted</string>
+    <string name="reminders_enabled">Enabled</string>
+    <string name="reminders_frequency">Frequency</string>
+    <string name="reminders_time">Time of day</string>
+    <string name="reminders_day_of_week">Day of week</string>
+    <string name="reminders_day_of_month">Day of month</string>
+    <string name="reminders_page_mode">Progression</string>
+    <string name="reminders_pick_book">Pick book</string>
+    <string name="reminders_book_required">Choose a book for this reminder</string>
+    <string name="reminders_save">Save reminder</string>
+    <string name="reminders_type_pull">Pull List</string>
+    <string name="reminders_type_book">Book</string>
+    <string name="reminders_mode_page_a_day">Page-a-day</string>
+    <string name="reminders_mode_resume">Resume progress</string>
+    <string name="reminders_schedule_daily">Daily at %1$s</string>
+    <string name="reminders_schedule_weekly">Weekly on %1$s at %2$s</string>
+    <string name="reminders_schedule_monthly">Monthly on day %1$d at %2$s</string>
+    <string name="reminders_no_book">No book selected</string>
+
+    <string name="book_picker_title">Pick a book</string>
+    <string name="book_picker_tab_library">Library</string>
+    <string name="book_picker_tab_pull">Pull List</string>
+    <string name="book_picker_tab_files">Local files</string>
+    <string name="book_picker_empty_library">No comics in your local library</string>
+    <string name="book_picker_empty_pull">Nothing unread on your Pull List</string>
+    <string name="book_picker_pick_file">Choose file…</string>
 </resources>

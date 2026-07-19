@@ -73,6 +73,10 @@ public class ReaderFragment extends Fragment implements View.OnTouchListener {
     public static final String PARAM_HANDLER = "PARAM_HANDLER";
     public static final String PARAM_URI = "PARAM_URI";
     public static final String PARAM_MODE = "PARAM_MODE";
+    /** Optional Pull List / SMB identity key for progress tracking. */
+    public static final String PARAM_IDENTITY_KEY = "PARAM_IDENTITY_KEY";
+    /** 1-based page to open when launching the reader (reminders, deep links). */
+    public static final String PARAM_PAGE = "PARAM_PAGE";
     public static final String STATE_FULLSCREEN = "STATE_FULLSCREEN";
     public static final String STATE_PAGEINFO = "STATE_PAGEINFO";
     public static final String STATE_NEW_COMIC = "STATE_NEW_COMIC";
@@ -111,6 +115,7 @@ public class ReaderFragment extends Fragment implements View.OnTouchListener {
     private Comic mComic = null;
     private Comic mNewComic;
     private int mNewComicTitle;
+    private String mIdentityKey = null;
 
     public enum Mode {
         MODE_LIBRARY,
@@ -164,6 +169,13 @@ public class ReaderFragment extends Fragment implements View.OnTouchListener {
 
         Bundle bundle = getArguments();
         Mode mode = (Mode) bundle.getSerializable(PARAM_MODE);
+        mIdentityKey = bundle.getString(PARAM_IDENTITY_KEY, null);
+        if ((mIdentityKey == null || mIdentityKey.isEmpty()) && getActivity() != null) {
+            Intent actIntent = getActivity().getIntent();
+            if (actIntent != null) {
+                mIdentityKey = actIntent.getStringExtra(PARAM_IDENTITY_KEY);
+            }
+        }
 
         String error = "";
         try {
@@ -356,7 +368,9 @@ public class ReaderFragment extends Fragment implements View.OnTouchListener {
 
         // setup view pager, set adapter after parsing in bg thread below
         mViewPager = view.findViewById(R.id.viewPager);
-        mViewPager.setOffscreenPageLimit(2);
+        mViewPager.setOffscreenPageLimit(3);
+        mViewPager.setPageMargin(0);
+        mViewPager.setBackgroundColor(0xFF000000);
         mViewPager.setOnTouchListener(this);
         mViewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
             @Override
@@ -509,6 +523,7 @@ public class ReaderFragment extends Fragment implements View.OnTouchListener {
         if (mComic != null) {
             mComic.setCurrentPage(getCurrentPage());
         }
+        reportPullListProgress(getCurrentPage());
         Utils.disablePendingTransition(getActivity());
         super.onPause();
     }
@@ -643,7 +658,25 @@ public class ReaderFragment extends Fragment implements View.OnTouchListener {
                 .toString();
         mPageNavTextView.setText(navText);
 
+        reportPullListProgress(page);
         updatePageImageInfo();
+    }
+
+    private void reportPullListProgress(int page) {
+        if (mIdentityKey == null || mIdentityKey.isEmpty() || mPageCount < 1 || page < 1) {
+            return;
+        }
+        final String key = mIdentityKey;
+        final int highest = page;
+        final int count = mPageCount;
+        final android.content.Context appCtx = requireContext().getApplicationContext();
+        new Thread(() -> {
+            try {
+                new com.cupcakecomics.pulllist.PullListRepository(appCtx)
+                        .updateReadingProgressSync(key, highest, count);
+            } catch (Throwable ignored) {
+            }
+        }, "pull-progress").start();
     }
 
     private void updatePageImageInfo() {
@@ -753,6 +786,61 @@ public class ReaderFragment extends Fragment implements View.OnTouchListener {
                 pageImageView.setTranslateToRightEdge(!mIsLeftToRight);
             pageImageView.setViewMode(mPageViewMode);
             pageImageView.setOnTouchListener(ReaderFragment.this);
+            pageImageView.setOnSwipePageListener(new PageImageView.OnSwipePageListener() {
+                @Override
+                public void onSwipeNextPage() {
+                    // Product lock: swipe left/up advances. Page index always increases.
+                    if (getCurrentPage() >= mPageCount)
+                        hitEnding();
+                    else
+                        setCurrentPage(getCurrentPage() + 1);
+                }
+
+                @Override
+                public void onSwipePreviousPage() {
+                    // Swipe right/down goes back.
+                    if (getCurrentPage() <= 1)
+                        hitBeginning();
+                    else
+                        setCurrentPage(getCurrentPage() - 1);
+                }
+
+                @Override
+                public boolean onPagePeekDrag(float deltaX) {
+                    if (mViewPager == null) return false;
+                    try {
+                        if (!mViewPager.isFakeDragging()) {
+                            if (!mViewPager.beginFakeDrag()) return false;
+                        }
+                        // 1:1 finger tracking — no extra scaling.
+                        mViewPager.fakeDragBy(deltaX);
+                        return true;
+                    } catch (Exception e) {
+                        return false;
+                    }
+                }
+
+                @Override
+                public void onPagePeekEnd() {
+                    if (mViewPager == null) return;
+                    try {
+                        if (mViewPager.isFakeDragging()) {
+                            mViewPager.endFakeDrag();
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    // Keep the settled page flush at home after the canvas slide.
+                    try {
+                        int pos = mViewPager.getCurrentItem();
+                        View page = mViewPager.findViewWithTag(Integer.valueOf(pos));
+                        if (page != null) {
+                            PageImageView piv = page.findViewById(R.id.pageImageView);
+                            if (piv != null) piv.resetToFullPage();
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
 
             container.addView(layout);
 
@@ -836,6 +924,10 @@ public class ReaderFragment extends Fragment implements View.OnTouchListener {
                 return;
 
             layout.findViewById(R.id.pageImageView).setVisibility(visibilityFlag(v == Show.PAGE));
+            View overlay = layout.findViewById(R.id.pageOverlay);
+            if (overlay != null) {
+                overlay.setVisibility(visibilityFlag(v != Show.PAGE));
+            }
 
             boolean showProgress = (v == Show.PROGRESS);
             ImageView progressImage = layout.findViewById(R.id.progressImage);
@@ -968,7 +1060,9 @@ public class ReaderFragment extends Fragment implements View.OnTouchListener {
                 return true;
             }
 
-            return false;
+            // Center tap: show bottom page scrubber (x / y) without leaving immersive chrome.
+            setFullscreen(false);
+            return true;
         }
 
         /**

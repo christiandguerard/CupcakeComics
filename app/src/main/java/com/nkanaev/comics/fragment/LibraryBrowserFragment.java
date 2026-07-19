@@ -32,6 +32,7 @@ import androidx.core.view.MenuItemCompat;
 import androidx.core.widget.ImageViewCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.nkanaev.comics.BuildConfig;
@@ -135,24 +136,13 @@ public class LibraryBrowserFragment extends Fragment
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         final View view = inflater.inflate(R.layout.fragment_librarybrowser, container, false);
 
-        final int numColumns = calculateNumColumns();
-        int spacing = (int) getResources().getDimension(R.dimen.grid_margin);
-
-        PreCachingGridLayoutManager layoutManager = new PreCachingGridLayoutManager(getActivity(), numColumns);
-        layoutManager.setSpanSizeLookup(createSpanSizeLookup());
-        int height = Utils.getDeviceHeightPixels();
-        layoutManager.setExtraLayoutSpace(height * 2);
-
         mComicListView = (RecyclerView) view.findViewById(R.id.library_grid);
-        // some preformance optimizations
         mComicListView.setHasFixedSize(true);
-        // raise default cache values (number of cards) from a very low DEFAULT_CACHE_SIZE=2
-        mComicListView.setItemViewCacheSize(Math.max(4 * numColumns, 40));
-        //mComicListView.getRecycledViewPool().setMaxRecycledViews(ITEM_VIEW_TYPE_COMIC,20);
-
-        mComicListView.setLayoutManager(layoutManager);
+        mComicListView.setItemViewCacheSize(40);
+        mComicListView.setLayoutManager(new LinearLayoutManager(getActivity()));
         mComicListView.setAdapter(new ComicGridAdapter());
-        mComicListView.addItemDecoration(new GridSpacingItemDecoration(numColumns, spacing));
+        mComicListView.setVerticalScrollBarEnabled(false);
+        mComicListView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         registerForContextMenu(mComicListView);
 
         mRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.fragmentLibraryBrowserRefreshLayout);
@@ -803,11 +793,8 @@ public class LibraryBrowserFragment extends Fragment
     }
 
     private int calculateNumColumns() {
-        int deviceWidth = Utils.getDeviceWidth(getActivity());
-        int columnWidth = getActivity().getResources().getInteger(R.integer.grid_comic_column_width);
-
-        int cols = Math.round((float) deviceWidth / columnWidth);
-        return cols > 0 ? cols : 1;
+        // Media browser is a single-column cover + title list.
+        return 1;
     }
 
     private GridLayoutManager.SpanSizeLookup createSpanSizeLookup() {
@@ -1047,11 +1034,10 @@ public class LibraryBrowserFragment extends Fragment
             //if (lastCacheStamp != null && !lastCacheStamp.equals(mCacheStamp))
             //   mPicasso.invalidate(uri);
             mPicasso.load(uri).into(mComicImageView);
-            //mCache.put(uri, mCacheStamp);
 
             // reload comic (in case it was updated by the cover loading)
             comic = Storage.getStorage(getContext()).getComic(comic.getId());
-            mTitleTextView.setText(comic.getFile().getName());
+            mTitleTextView.setText(Utils.removeExtensionIfAny(comic.getFile().getName()));
             String totalPages = comic.getTotalPages() < 1 ? "?" : Integer.toString(comic.getTotalPages());
             mPagesTextView.setText(Integer.toString(comic.getCurrentPage()) + '/' + totalPages);
         }

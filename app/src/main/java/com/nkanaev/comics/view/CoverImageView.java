@@ -60,10 +60,14 @@ public class CoverImageView extends AppCompatImageView {
             // it is a wraparound with actual cover on the right side
             scale = (float) vheight / (float) dheight;
             dx = (vwidth - dwidth * scale) * 1f;
-        }
-        // portrait, just fit to width
-        else {
-            scale = (float) vwidth / (float) dwidth;
+        } else {
+            // Portrait: center-crop to fill the comic tile so shorter book/PDF
+            // pages do not leave a gray gap under the cover.
+            float scaleW = (float) vwidth / (float) dwidth;
+            float scaleH = (float) vheight / (float) dheight;
+            scale = Math.max(scaleW, scaleH);
+            dx = (vwidth - dwidth * scale) * 0.5f;
+            dy = (vheight - dheight * scale) * 0.5f;
         }
 
         matrix.setScale(scale, scale);

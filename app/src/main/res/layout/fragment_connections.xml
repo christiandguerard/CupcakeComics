@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             android:background="?android:attr/colorBackground">
+
+    <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="none"
+            android:fillViewport="true">
+        <LinearLayout
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:paddingBottom="88dp">
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/connections_smb_section"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/connections_smb_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"/>
+
+            <TextView
+                    android:id="@+id/connections_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/connections_smb_empty"
+                    android:padding="16dp"
+                    android:visibility="gone"/>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="@string/connections_kapowarr_section"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/connections_kap_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"/>
+
+            <TextView
+                    android:id="@+id/connections_kap_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/connections_kapowarr_empty"
+                    android:padding="16dp"
+                    android:visibility="gone"/>
+        </LinearLayout>
+    </ScrollView>
+
+    <Button
+            android:id="@+id/connections_add"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:text="@string/connections_add"
+            android:textSize="24sp"/>
+</FrameLayout>

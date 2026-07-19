@@ -28,6 +28,14 @@ public class MainApplication extends MultiDexApplication {
                 mode = default_mode;
         }
         AppCompatDelegate.setDefaultNightMode(mode);
+
+        try {
+            com.cupcakecomics.notifications.CupcakeNotifications.ensureChannels(this);
+            com.cupcakecomics.pulllist.PullListWorker.schedule(this);
+            com.cupcakecomics.reminders.ReminderScheduler.schedule(this);
+            com.cupcakecomics.feedback.FeedbackOverlay.install(this);
+        } catch (Throwable ignored) {
+        }
     }
 
     public static Context getAppContext() {

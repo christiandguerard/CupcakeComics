@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -23,6 +25,8 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class BrowserFragment extends Fragment
@@ -34,6 +38,9 @@ public class BrowserFragment extends Fragment
     private final File mRootDir = new File("/");
     private File[] mSubdirs = new File[]{};
     private SwipeRefreshLayout mRefreshLayout;
+    private final ExecutorService mIoExecutor = Executors.newSingleThreadExecutor();
+    private final Handler mMainHandler = new Handler(Looper.getMainLooper());
+    private int mListGeneration = 0;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -52,14 +59,6 @@ public class BrowserFragment extends Fragment
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         final View view = inflater.inflate(R.layout.fragment_browser, container, false);
 
-        /*
-        ViewGroup toolbar = (ViewGroup) getActivity().findViewById(R.id.toolbar);
-        ViewGroup breadcrumbLayout = (ViewGroup) inflater.inflate(R.layout.breadcrumb, toolbar, false);
-        toolbar.addView(breadcrumbLayout);
-        mDirTextView = (TextView) breadcrumbLayout.findViewById(R.id.dir_textview);
-        */
-        setCurrentDirectory(mCurrentDir);
-
         mListView = (ListView) view.findViewById(R.id.listview_browser);
         mListView.setAdapter(new DirectoryAdapter());
         mListView.setOnItemClickListener(this);
@@ -72,6 +71,9 @@ public class BrowserFragment extends Fragment
             mRefreshLayout.setEnabled(true);
         }
 
+        // List after the ListView exists so the first paint is not blocked on I/O.
+        setCurrentDirectory(mCurrentDir);
+
         return view;
     }
 
@@ -83,74 +85,89 @@ public class BrowserFragment extends Fragment
 
     @Override
     public void onDestroyView() {
-        /*
-        ViewGroup toolbar = (ViewGroup) getActivity().findViewById(R.id.toolbar);
-        ViewGroup breadcrumb = (ViewGroup) toolbar.findViewById(R.id.breadcrumb_layout);
-        toolbar.removeView(breadcrumb);
-        */
+        mListGeneration++;
         super.onDestroyView();
+    }
+
+    @Override
+    public void onDestroy() {
+        mIoExecutor.shutdownNow();
+        super.onDestroy();
     }
 
     private void setCurrentDirectory(File dir) {
         mCurrentDir = dir;
-        ArrayList<File> subDirs = new ArrayList<>();
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setSubTitle(dir.getAbsolutePath());
+        }
+        final int generation = ++mListGeneration;
+        final File listingDir = dir;
+        if (mRefreshLayout != null) {
+            mRefreshLayout.setRefreshing(true);
+        }
+        mIoExecutor.execute(() -> {
+            ArrayList<File> subDirs = new ArrayList<>();
 
-        // list only folders and known archive types
-        File[] files = mCurrentDir.listFiles();
-        if (files != null) {
-            for (File f : files) {
-                if (f.isDirectory() || Utils.isArchive(f.getName())) {
-                    subDirs.add(f);
+            File[] files = listingDir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (f.isDirectory() || Utils.isArchive(f.getName())) {
+                        subDirs.add(f);
+                    }
                 }
             }
-        }
 
-        File[] validFolders = Utils.listExternalStorageDirs();
-        // ensure paths to known storages are listed, even if not browsable
-        if (Utils.isOreoOrLater()) {
-            Path parent = mCurrentDir.toPath();
-            for (File validPath : validFolders) {
-                if (!validPath.toPath().startsWith(parent))
-                    continue;
+            File[] validFolders = Utils.listExternalStorageDirs();
+            if (Utils.isOreoOrLater()) {
+                Path parent = listingDir.toPath();
+                for (File validPath : validFolders) {
+                    if (!validPath.toPath().startsWith(parent))
+                        continue;
 
-                Path relPath = parent.relativize(validPath.toPath());
-                if (relPath.getNameCount() < 1)
-                    continue;
+                    Path relPath = parent.relativize(validPath.toPath());
+                    if (relPath.getNameCount() < 1)
+                        continue;
 
-                File entry = new File(mCurrentDir, relPath.getName(0).toString());
-                if (!subDirs.contains(entry))
-                    subDirs.add(entry);
+                    File entry = new File(listingDir, relPath.getName(0).toString());
+                    if (!subDirs.contains(entry))
+                        subDirs.add(entry);
+                }
             }
-        }
 
-        // sort alphabetically ignore-case
-        Collections.sort(subDirs, new IgnoreCaseComparator() {
-            @Override
-            public String stringValue(Object o) {
-                return ((File) o).getName();
+            Collections.sort(subDirs, new IgnoreCaseComparator() {
+                @Override
+                public String stringValue(Object o) {
+                    return ((File) o).getName();
+                }
+            });
+
+            if (!listingDir.getAbsolutePath().equals(mRootDir.getAbsolutePath())) {
+                File parentFile = listingDir.getParentFile();
+                if (parentFile != null) {
+                    subDirs.add(0, parentFile);
+                }
             }
+
+            final File[] next = subDirs.toArray(new File[0]);
+            mMainHandler.post(() -> {
+                if (generation != mListGeneration || !isAdded()) {
+                    return;
+                }
+                mSubdirs = next;
+                if (mListView != null) {
+                    mListView.invalidateViews();
+                }
+                if (mRefreshLayout != null) {
+                    mRefreshLayout.setRefreshing(false);
+                }
+            });
         });
-
-        // add '..' to top
-        if (!mCurrentDir.getAbsolutePath().equals(mRootDir.getAbsolutePath())) {
-            subDirs.add(0,mCurrentDir.getParentFile());
-        }
-
-        mSubdirs = subDirs.toArray(new File[subDirs.size()]);
-
-        if (mListView != null) {
-            mListView.invalidateViews();
-        }
-
-        //mDirTextView.setText(dir.getAbsolutePath());
-        ((MainActivity)getActivity()).setSubTitle(dir.getAbsolutePath());
     }
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         File file = mSubdirs[position];
 
-        // folders can be opened via long click below
         if (file.isDirectory()) {
             setCurrentDirectory(file);
             return;
@@ -169,13 +186,11 @@ public class BrowserFragment extends Fragment
         if (!file.isDirectory())
             return true;
 
-        // check if directory is folder-based comic
         try {
             Parser p = ParserFactory.create(file);
             if (p.numPages() < 1)
                 return true;
         } catch (Exception e) {
-            // TODO: not rly expecting an exception here
             Log.e("BrowserFragment","onItemLongClick",e);
             return true;
         }
@@ -191,42 +206,16 @@ public class BrowserFragment extends Fragment
         ImageView view = (ImageView) convertView.findViewById(R.id.directory_row_icon);
         ImageView circle = (ImageView) convertView.findViewById(R.id.directory_row_circle);
         GradientDrawable circleDrawable = (GradientDrawable) circle.getDrawable();
-        //GradientDrawable shape = (GradientDrawable) view.getBackground();
-        //ImageView rainbow = (ImageView) convertView.findViewById(R.id.directory_row_rainbow);
-        //rainbow.setVisibility(View.INVISIBLE);
 
-        // default is folder icon on grey circle
         view.setImageResource(R.drawable.ic_folder_24);
         int colorRes = R.color.circle_grey;
         circleDrawable.setColor(getResources().getColor(colorRes));
         circle.setVisibility(View.VISIBLE);
 
-        // ignore top parent dir entry
-        if (position == 0)
+        if (position == 0 && !mCurrentDir.getAbsolutePath().equals(mRootDir.getAbsolutePath()))
             return;
 
         if (file.isDirectory()) {
-            // is it a dir comic?
-            try {
-                Parser p = ParserFactory.create(file);
-                if (p.numPages()>0) {
-                    view.setImageResource(R.drawable.ic_image_folder_24);
-                    colorRes = R.color.circle_teal;
-                }
-            } catch (Exception ignored) {
-            }
-
-            // TODO: file listing on folders with many files slows down scrolling
-            File[] files = file.listFiles();
-            if (files != null)
-                for (File f : files) {
-                    if (Utils.isArchive(f.getName())) {
-                        // show rainbow
-                        circle.setVisibility(View.INVISIBLE);
-                        break;
-                    }
-                }
-
             circleDrawable.setColor(getResources().getColor(colorRes));
             return;
         }
@@ -249,16 +238,15 @@ public class BrowserFragment extends Fragment
             colorRes = R.color.circle_orange;
         }
 
-        //shape.setColor(getResources().getColor(colorRes));
         circleDrawable.setColor(getResources().getColor(colorRes));
     }
 
     @Override
     public void onRefresh() {
-        // refresh on show
         if (mCurrentDir!=null)
             setCurrentDirectory(mCurrentDir);
-        mRefreshLayout.setRefreshing(false);
+        else if (mRefreshLayout != null)
+            mRefreshLayout.setRefreshing(false);
     }
 
     private final class DirectoryAdapter extends BaseAdapter {

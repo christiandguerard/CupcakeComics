@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "M:\\Project Work\\Cupcake Comics\\app\\src\\main\\cpp\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\reade\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "M:\\Project Work\\Cupcake Comics\\app\\.cxx\\Debug\\715h3p1r\\armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\reade\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "M:\\Project Work\\Cupcake Comics\\app\\.cxx\\Debug\\715h3p1r\\armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "cupcake_image::@6890427a1f51a3e7e1df": {
+      "artifactName": "cupcake_image",
+      "abi": "armeabi-v7a",
+      "output": "M:\\Project Work\\Cupcake Comics\\app\\build\\intermediates\\cxx\\Debug\\715h3p1r\\obj\\armeabi-v7a\\libcupcake_image.so",
+      "runtimeFiles": []
+    }
+  }
+}

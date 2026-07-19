@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:paddingStart="16dp"
+              android:paddingEnd="16dp"
+              android:paddingTop="14dp"
+              android:paddingBottom="14dp"
+              android:background="?attr/selectableItemBackground">
+
+    <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+        <TextView
+                android:id="@+id/estimate_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:maxLines="2"
+                android:ellipsize="end"/>
+
+        <TextView
+                android:id="@+id/estimate_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:textColor="?android:attr/textColorSecondary"/>
+    </LinearLayout>
+
+    <TextView
+            android:id="@+id/estimate_eta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="13sp"
+            android:textColor="?android:attr/textColorSecondary"/>
+
+    <ProgressBar
+            android:id="@+id/estimate_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginTop="8dp"
+            android:max="1000"
+            android:progress="0"
+            android:progressDrawable="@drawable/pull_release_bar"/>
+
+    <TextView
+            android:id="@+id/estimate_source"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="11sp"
+            android:textColor="?android:attr/textColorSecondary"/>
+</LinearLayout>

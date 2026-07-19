@@ -12,6 +12,15 @@
 
         <item name="actionBarWidgetTheme">@style/MyToolbarTheme</item>
         <item name="android:actionBarWidgetTheme">@style/MyToolbarTheme</item>
+        <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeBackground">@color/primaryDark</item>
+        <item name="actionModeStyle">@style/CupcakeActionMode</item>
+    </style>
+
+    <style name="CupcakeActionMode" parent="Widget.AppCompat.ActionMode">
+        <item name="background">@color/primaryDark</item>
+        <item name="titleTextStyle">@style/MyToolbarTextAppearance</item>
+        <item name="subtitleTextStyle">@style/MyToolbarTextAppearance</item>
     </style>
 
     <style name="MyToolbarTheme" parent="AppThemeDayNight">

@@ -1,57 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:cardview="http://schemas.android.com/apk/res-auto"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:clickable="true"
-        android:focusable="true"
-        android:foreground="?android:attr/selectableItemBackground"
-        cardview:cardBackgroundColor="@color/card_gradient_end"
-        cardview:cardCornerRadius="2dp"
-        cardview:cardElevation="4dp">
-    <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:orientation="horizontal"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:gravity="center_vertical"
+              android:foreground="?attr/selectableItemBackground"
+              android:paddingStart="12dp"
+              android:paddingEnd="12dp"
+              android:paddingTop="8dp"
+              android:paddingBottom="8dp"
+              android:minHeight="160dp">
+
+    <com.nkanaev.comics.view.CoverImageView
+            android:id="@+id/comicImageView"
+            android:layout_width="110dp"
             android:layout_height="wrap_content"
-            android:visibility="visible">
-        <com.nkanaev.comics.view.CoverImageView
-                android:id="@+id/comicImageView"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:scaleType="fitEnd"
-                app:layout_constraintTop_toTopOf="parent"/>
-        <LinearLayout
-                android:id="@+id/comicLayout"
+            android:background="@color/card_gradient_end"
+            android:scaleType="centerCrop"
+            android:contentDescription="@null"/>
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="4dp">
+
+        <TextView
+                android:id="@+id/comicTitleTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:layout_constraintBottom_toBottomOf="parent"
-                android:orientation="vertical"
-                android:background="@drawable/gradient">
-            <TextView
-                    android:id="@+id/comicTitleTextView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@android:color/transparent"
-                    android:paddingLeft="8dp"
-                    android:paddingRight="8dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="1dp"
-                    android:maxLines="6"
-                    android:text="Comic title\nmore\nmore\neven more effing text"
-                    style="@style/CardTitle"/>
-            <TextView
-                    android:id="@+id/comicPagerTextView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@android:color/transparent"
-                    android:paddingLeft="8dp"
-                    android:paddingRight="8dp"
-                    android:paddingTop="1dp"
-                    android:paddingBottom="4dp"
-                    android:singleLine="true"
-                    android:visibility="visible"
-                    style="@style/CardSubTitle"/>
-        </LinearLayout>
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</androidx.cardview.widget.CardView>
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:maxLines="4"
+                android:ellipsize="end"
+                android:lineSpacingExtra="2dp"
+                android:textColor="?android:attr/textColorPrimary"/>
+
+        <TextView
+                android:id="@+id/comicPagerTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textSize="13sp"
+                android:textColor="?android:attr/textColorSecondary"/>
+    </LinearLayout>
+</LinearLayout>

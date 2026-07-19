@@ -1,66 +1,51 @@
 plugins {
     id("com.android.application")
-}
-
-// count tags and use as Android versionCode
-// https://developer.android.com/studio/publish/versioning
-def getVersionCode = { ->
-    def stream = providers.exec {
-        commandLine 'git', 'tag', '--list'
-    }.standardOutput
-    return stream.asText.get().split("\n").size() as Integer
-}
-
-// use git describe to generate a version name looking like
-// "<tag>-<number of commits since tag>-<8 char abbreviated commit name>"
-def getVersionName = { ->
-    def stream = providers.exec {
-        commandLine "git", "describe", "--tags", "--long"
-    }.standardOutput
-    return stream.asText.get().trim() //.replaceAll("[^\\x00-\\x7F]", "")
-}
-
-repositories {
-    mavenCentral()
-    mavenLocal()
-    google()
-    // jp2-android repo (MIA)
-    //maven { url = "https://jcenter.bintray.com/" }
-    // 7-Zip-JBinding-4Android 16.02-2.02 repo
-    maven { url = 'https://jitpack.io' }
-    // commons-compress rc-1 location
-    //maven { url "https://repository.apache.org/content/repositories/orgapachecommons-1628/" }
+    id("org.jetbrains.kotlin.android")
+    id("com.google.devtools.ksp") version "2.0.21-1.0.28"
 }
 
 android {
-    //compileSdk = 36
-    compileSdk {
-        version = release(37) {
-            it.minorApiLevel = 0
-        }
-    }
-    //compileSdkPreview "CANARY"
-    //buildToolsVersion '28.0.3'
+    // Cupcake Comics SPEC-v1: minSdk 30 / targetSdk 35; compileSdk 36 required by AndroidX activity 1.11+
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.github.edeso.bubble2"
+        applicationId = "com.cupcakecomics.app"
         namespace = "com.nkanaev.comics"
 
-        minSdk = 21
-        targetSdk = 37
-        //targetSdkPreview "VanillaIceCream"
+        minSdk = 30
+        targetSdk = 35
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 
-        versionName = getVersionName()
-        versionCode = getVersionCode()
-        //setProperty("archivesBaseName", applicationId + "-v" + versionCode + "(" + versionName + ")")
-        base.archivesName = "Bubble2-${versionName}"
+        // Clean Cupcake version — do not derive from Bubble2 git tags (they embed movie-quote titles).
+        versionName = "0.1.0"
+        versionCode = 1
+        base.archivesName = "CupcakeComics-${versionName}"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17 -frtti -fexceptions"
+                arguments "-DANDROID_STL=c++_shared",
+                        "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+            }
+        }
+        ndk {
+            abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
+        }
 
         manifestPlaceholders = [
                 appIcon: "@drawable/icon_squared"
         ]
    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 
     // reconfigure to create APK file without '-release' suffix.
     applicationVariants.all { variant ->
@@ -74,6 +59,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
     }
 
     buildFeatures {
@@ -132,6 +121,7 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
     // fragment v1.7+ API19
     implementation 'androidx.fragment:fragment:1.8.9'
+    implementation 'androidx.fragment:fragment-ktx:1.8.9'
     // activity v1.12+ API23
     //noinspection GradleDependency,NewerVersionAvailable
     implementation 'androidx.activity:activity:1.11.0'
@@ -159,10 +149,32 @@ dependencies {
     //implementation files('lib/jp2-android-1.0.3.aar')
     implementation 'dev.keiji.jp2:jp2-android:1.0.5'
 
-    // workaround fix 'Duplicate class kotlin.collections.jdk8.CollectionsJDK8Kt found in modules ...'
-    //implementation(platform("org.jetbrains.kotlin:kotlin-bom:2.0.0"))
+    // Cupcake Comics — persistence, crypto, SMB, coroutines
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
+    implementation 'androidx.room:room-runtime:2.6.1'
+    implementation 'androidx.room:room-ktx:2.6.1'
+    ksp 'androidx.room:room-compiler:2.6.1'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation 'com.hierynomus:smbj:0.14.0'
+    implementation 'org.slf4j:slf4j-nop:2.0.16'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'androidx.viewpager2:viewpager2:1.1.0'
 
-    //implementation fileTree(dir: 'lib', include: ['*.jar','*.aar'])
+    // Unit tests
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0'
+    testImplementation 'androidx.arch.core:core-testing:2.2.0'
+
+    // Instrumented tests
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }
 
 // write deps to BuildConfig for AboutFragment to display

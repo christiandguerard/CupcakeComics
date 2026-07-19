@@ -10,6 +10,8 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
+import com.cupcakecomics.reader.CupcakeReaderFragment;
+import com.cupcakecomics.reader.settings.ReaderSettingsStore;
 import com.nkanaev.comics.BuildConfig;
 import com.nkanaev.comics.R;
 import com.nkanaev.comics.fragment.ReaderFragment;
@@ -24,10 +26,6 @@ public class ReaderActivity extends AppCompatActivity {
         if (false && BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(
                     new StrictMode.ThreadPolicy.Builder()
-                            //.detectDiskReads()
-                            //.detectDiskWrites()
-                            //.detectNetwork()
-                            // or for all detectable problems
                             .detectAll()
                             .penaltyFlashScreen()
                             .penaltyLog()
@@ -49,20 +47,62 @@ public class ReaderActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         if (savedInstanceState == null) {
+            boolean useGpu = shouldUseGpuReader();
             if (Intent.ACTION_VIEW.equals(getIntent().getAction())) {
-                ReaderFragment fragment = ReaderFragment.create( getIntent() );
-                setFragment(fragment);
-            }
-            else {
+                if (useGpu) {
+                    setFragment(CupcakeReaderFragment.createIntent(getIntent()));
+                } else {
+                    setFragment(ReaderFragment.create(getIntent()));
+                }
+            } else {
                 Bundle extras = getIntent().getExtras();
-                ReaderFragment fragment = null;
                 ReaderFragment.Mode mode = (ReaderFragment.Mode) extras.getSerializable(ReaderFragment.PARAM_MODE);
+                String identity = extras.getString(ReaderFragment.PARAM_IDENTITY_KEY);
 
-                if (mode == ReaderFragment.Mode.MODE_LIBRARY)
-                    fragment = ReaderFragment.create(extras.getInt(ReaderFragment.PARAM_HANDLER));
-                else
-                    fragment = ReaderFragment.create((File) extras.getSerializable(ReaderFragment.PARAM_HANDLER));
-                setFragment(fragment);
+                if (useGpu) {
+                    Fragment fragment;
+                    if (mode == ReaderFragment.Mode.MODE_LIBRARY) {
+                        fragment = CupcakeReaderFragment.createLibrary(
+                                extras.getInt(ReaderFragment.PARAM_HANDLER), identity);
+                    } else {
+                        fragment = CupcakeReaderFragment.createFile(
+                                (File) extras.getSerializable(ReaderFragment.PARAM_HANDLER), identity);
+                    }
+                    // Propagate SMB streaming hints when present
+                    if (extras.containsKey(CupcakeReaderFragment.PARAM_SMB_SHARE_ID)) {
+                        fragment.getArguments().putLong(
+                                CupcakeReaderFragment.PARAM_SMB_SHARE_ID,
+                                extras.getLong(CupcakeReaderFragment.PARAM_SMB_SHARE_ID));
+                        fragment.getArguments().putString(
+                                CupcakeReaderFragment.PARAM_SMB_RELATIVE_PATH,
+                                extras.getString(CupcakeReaderFragment.PARAM_SMB_RELATIVE_PATH));
+                    }
+                    if (extras.containsKey(ReaderFragment.PARAM_PAGE)) {
+                        fragment.getArguments().putInt(
+                                ReaderFragment.PARAM_PAGE,
+                                extras.getInt(ReaderFragment.PARAM_PAGE));
+                    }
+                    setFragment(fragment);
+                } else {
+                    // Legacy reader cannot stream SMB; require a real local file.
+                    if (extras.containsKey(CupcakeReaderFragment.PARAM_SMB_SHARE_ID)
+                            && mode != ReaderFragment.Mode.MODE_LIBRARY) {
+                        File smbHandler = (File) extras.getSerializable(ReaderFragment.PARAM_HANDLER);
+                        if (smbHandler == null || !smbHandler.isFile()) {
+                            finish();
+                            return;
+                        }
+                    }
+                    ReaderFragment fragment;
+                    if (mode == ReaderFragment.Mode.MODE_LIBRARY)
+                        fragment = ReaderFragment.create(extras.getInt(ReaderFragment.PARAM_HANDLER));
+                    else
+                        fragment = ReaderFragment.create((File) extras.getSerializable(ReaderFragment.PARAM_HANDLER));
+                    if (identity != null) {
+                        fragment.getArguments().putString(ReaderFragment.PARAM_IDENTITY_KEY, identity);
+                    }
+                    setFragment(fragment);
+                }
             }
         }
 
@@ -72,6 +112,18 @@ public class ReaderActivity extends AppCompatActivity {
             actionBar.setDisplayShowCustomEnabled(true);
             actionBar.setCustomView(R.layout.action_bar_title_layout);
             actionBar.setTitle("");
+        }
+    }
+
+    private boolean shouldUseGpuReader() {
+        Intent intent = getIntent();
+        if (intent != null && intent.hasExtra(CupcakeReaderFragment.PARAM_USE_GPU_READER)) {
+            return intent.getBooleanExtra(CupcakeReaderFragment.PARAM_USE_GPU_READER, true);
+        }
+        try {
+            return new ReaderSettingsStore(this).loadDefaults().getUseGpuRenderer();
+        } catch (Throwable t) {
+            return true;
         }
     }
 

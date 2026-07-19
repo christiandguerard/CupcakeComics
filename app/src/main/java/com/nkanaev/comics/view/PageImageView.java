@@ -17,11 +17,28 @@ import android.widget.OverScroller;
 import com.nkanaev.comics.Constants;
 
 public class PageImageView extends androidx.appcompat.widget.AppCompatImageView {
+    public interface OnSwipePageListener {
+        void onSwipeNextPage();
+        void onSwipePreviousPage();
+
+        /**
+         * Finger is dragging while the page is at its fitted home position.
+         * Host should drive ViewPager fake-drag so the next/prev page peeks in.
+         * @param deltaX incremental horizontal drag (finger right = positive)
+         * @return true if the host consumed the drag as a page peek
+         */
+        boolean onPagePeekDrag(float deltaX);
+
+        /** Finger up after a peek drag — host should endFakeDrag() to settle. */
+        void onPagePeekEnd();
+    }
+
     private Constants.PageViewMode mViewMode;
     private boolean mHaveFrame = false;
     private boolean mSkipScaling = false;
     private boolean mTranslateRightEdge = false;
     private OnTouchListener mOuterTouchListener;
+    private OnSwipePageListener mSwipePageListener;
     private ScaleGestureDetector mScaleGestureDetector;
     private GestureDetector mDragGestureDetector;
     private OverScroller mScroller;
@@ -29,6 +46,20 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
     private float mOriginalScale;
     private float[] m = new float[9];
     private Matrix mMatrix;
+    private final Matrix mHomeMatrix = new Matrix();
+    private boolean mUserPanned = false;
+    private boolean mSnappingHome = false;
+    private boolean mPeekDragging = false;
+    private boolean mPeekAxisVertical = false;
+    private boolean mSkipFixMatrix = false;
+    private float mDownX;
+    private float mDownY;
+    private boolean mTrackingSwipe = false;
+    /** Allow panning past page edges without zooming (fraction of view size). */
+    private static final float OVERSCROLL = 0.4f;
+    private static final int SNAP_DURATION_MS = 220;
+    /** Fraction of the shorter screen edge required to commit a page turn. */
+    private static final float PAGE_TURN_THRESHOLD = 0.22f;
 
     public PageImageView(Context context) {
         super(context);
@@ -56,10 +87,28 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
     }
 
     @Override
+    public void setImageBitmap(android.graphics.Bitmap bm) {
+        super.setImageBitmap(bm);
+        mSkipScaling = false;
+        try {
+            // Shared black letterbox so adjacent pages read as one continuous canvas.
+            setBackgroundColor(0xFF000000);
+        } catch (Throwable ignored) {
+            setBackgroundColor(0xFF000000);
+        }
+        scale();
+    }
+
+    @Override
     public void setImageDrawable(Drawable drawable) {
         super.setImageDrawable(drawable);
         mSkipScaling = false;
+        setBackgroundColor(0xFF000000);
         scale();
+    }
+
+    private void applyBorderBackground(Drawable drawable) {
+        setBackgroundColor(0xFF000000);
     }
 
     private void init() {
@@ -72,11 +121,42 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
         super.setOnTouchListener(new OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+                int action = event.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN) {
+                    mDownX = event.getX();
+                    mDownY = event.getY();
+                    mTrackingSwipe = true;
+                    mUserPanned = false;
+                    mPeekDragging = false;
+                    mPeekAxisVertical = false;
+                }
+
                 boolean b1 = mScaleGestureDetector.onTouchEvent(event);
                 boolean b2 = mDragGestureDetector.onTouchEvent(event);
                 boolean b3 = false;
                 if (mOuterTouchListener != null)
                     b3 = mOuterTouchListener.onTouch(v, event);
+
+                if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                    if (mPeekDragging) {
+                        if (mSwipePageListener != null) {
+                            mSwipePageListener.onPagePeekEnd();
+                        }
+                        mPeekDragging = false;
+                        mUserPanned = false;
+                        mTrackingSwipe = false;
+                        return true;
+                    }
+                    boolean turned = false;
+                    if (!mScaleGestureDetector.isInProgress() && mTrackingSwipe) {
+                        turned = maybeTurnPageFromSwipe(event.getX() - mDownX, event.getY() - mDownY);
+                    }
+                    if (!turned && !mScaleGestureDetector.isInProgress() && mUserPanned) {
+                        snapToFullPage();
+                    }
+                    mUserPanned = false;
+                    mTrackingSwipe = false;
+                }
                 return true;
             }
         });
@@ -84,6 +164,72 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
         mScroller = new OverScroller(getContext());
         mScroller.setFriction(ViewConfiguration.getScrollFriction() * 2);
         mViewMode = Constants.PageViewMode.ASPECT_FIT;
+    }
+
+    public void setOnSwipePageListener(OnSwipePageListener listener) {
+        mSwipePageListener = listener;
+    }
+
+    /**
+     * Finger left/up → next page; finger right/down → previous page.
+     * @return true if a page turn was committed
+     */
+    private boolean maybeTurnPageFromSwipe(float fingerDx, float fingerDy) {
+        if (mSwipePageListener == null) return false;
+        float threshold = Math.min(getWidth(), getHeight()) * PAGE_TURN_THRESHOLD;
+        if (threshold < 48f) threshold = 48f;
+
+        float absX = Math.abs(fingerDx);
+        float absY = Math.abs(fingerDy);
+        if (absX < threshold && absY < threshold) return false;
+
+        boolean horizontal = absX >= absY;
+        if (horizontal) {
+            // Finger moved left → next; right → previous
+            if (fingerDx < 0) {
+                mSwipePageListener.onSwipeNextPage();
+            } else {
+                mSwipePageListener.onSwipePreviousPage();
+            }
+        } else {
+            // Finger moved up → next; down → previous
+            if (fingerDy < 0) {
+                mSwipePageListener.onSwipeNextPage();
+            } else {
+                mSwipePageListener.onSwipePreviousPage();
+            }
+        }
+        // Stay put visually; pager will swap the view. Avoid snap fighting the turn.
+        mScroller.forceFinished(true);
+        mSnappingHome = false;
+        return true;
+    }
+
+    private boolean isAtHome() {
+        if (getDrawable() == null) return true;
+        float[] cur = new float[9];
+        float[] home = new float[9];
+        mMatrix.getValues(cur);
+        mHomeMatrix.getValues(home);
+        return Math.abs(cur[Matrix.MSCALE_X] - home[Matrix.MSCALE_X]) < 0.01f
+                && Math.abs(cur[Matrix.MTRANS_X] - home[Matrix.MTRANS_X]) < 1.5f
+                && Math.abs(cur[Matrix.MTRANS_Y] - home[Matrix.MTRANS_Y]) < 1.5f;
+    }
+
+    private void snapToFullPage() {
+        mScroller.forceFinished(true);
+        mSnappingHome = true;
+        // Temporarily allow unconstrained lerp toward home (fixMatrix would fight overshoot).
+        post(new SnapHomeAnimation());
+    }
+
+    /** Restore fitted full-page matrix without animation (e.g. after page change). */
+    public void resetToFullPage() {
+        mScroller.forceFinished(true);
+        mSnappingHome = false;
+        mUserPanned = false;
+        mSkipScaling = false;
+        scale();
     }
 
     @Override
@@ -147,6 +293,7 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
         }
         setImageMatrix(mMatrix);
         mOriginalScale = getCurrentScale();
+        mHomeMatrix.set(mMatrix);
         mSkipScaling = true;
     }
 
@@ -201,6 +348,42 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
 
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+            mSnappingHome = false;
+
+            // Fitted page: never pan the bitmap — only slide the pager so pages share one canvas.
+            if (!mScaleGestureDetector.isInProgress() && mSwipePageListener != null
+                    && (mPeekDragging || isAtHome())) {
+                float totalDx = e2.getX() - mDownX;
+                float totalDy = e2.getY() - mDownY;
+                float slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+
+                if (!mPeekDragging) {
+                    if (Math.hypot(totalDx, totalDy) < slop) {
+                        // Absorb micro-moves so the page doesn't jitter before the turn starts.
+                        return true;
+                    }
+                    mPeekAxisVertical = Math.abs(totalDy) > Math.abs(totalDx);
+                    float startDelta = mPeekAxisVertical ? -distanceY : -distanceX;
+                    if (mSwipePageListener.onPagePeekDrag(startDelta)) {
+                        mPeekDragging = true;
+                        // Keep matrix exactly at home (no animated reset mid-gesture).
+                        mMatrix.set(mHomeMatrix);
+                        mSkipFixMatrix = true;
+                        setImageMatrix(mMatrix);
+                        mSkipFixMatrix = false;
+                        return true;
+                    }
+                    return true;
+                }
+
+                float delta = mPeekAxisVertical ? -distanceY : -distanceX;
+                if (mSwipePageListener.onPagePeekDrag(delta)) {
+                    return true;
+                }
+                mPeekDragging = false;
+            }
+
+            mUserPanned = true;
             mMatrix.postTranslate(-distanceX, -distanceY);
             setImageMatrix(mMatrix);
             return true;
@@ -208,28 +391,9 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            Point imageSize = computeCurrentImageSize();
-            Point offset = computeCurrentOffset();
-
-            int minX = -imageSize.x - PageImageView.this.getWidth();
-            int minY = -imageSize.y - PageImageView.this.getHeight();
-            int maxX = 0;
-            int maxY = 0;
-
-            if (offset.x > 0) {
-                minX = offset.x;
-                maxX = offset.x;
-            }
-            if (offset.y > 0) {
-                minY = offset.y;
-                maxY = offset.y;
-            }
-
-            mScroller.fling(
-                    offset.x, offset.y,
-                    (int) velocityX, (int) velocityY,
-                    minX, maxX, minY, maxY);
-            ViewCompat.postInvalidateOnAnimation(PageImageView.this);
+            // Never leave the page off-center after a fling — snap home instead.
+            mUserPanned = true;
+            mScroller.forceFinished(true);
             return true;
         }
 
@@ -310,6 +474,9 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
     private Matrix fixMatrix(Matrix matrix) {
         if (getDrawable() == null)
             return matrix;
+        // While animating home or locking home for pager peek, apply the matrix as-is.
+        if (mSnappingHome || mSkipFixMatrix)
+            return matrix;
 
         matrix.getValues(m);
 
@@ -317,17 +484,31 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
 
         int imageWidth = imageSize.x;
         int imageHeight = imageSize.y;
-        int maxTransX = imageWidth - getWidth();
-        int maxTransY = imageHeight - getHeight();
+        int viewW = getWidth();
+        int viewH = getHeight();
+        float overX = viewW * OVERSCROLL;
+        float overY = viewH * OVERSCROLL;
 
-        if (imageWidth > getWidth())
-            m[Matrix.MTRANS_X] = Math.min(0, Math.max(m[Matrix.MTRANS_X], -maxTransX));
-        else
-            m[Matrix.MTRANS_X] = getWidth() / 2 - imageWidth / 2;
-        if (imageHeight > getHeight())
-            m[Matrix.MTRANS_Y] = Math.min(0, Math.max(m[Matrix.MTRANS_Y], -maxTransY));
-        else
-            m[Matrix.MTRANS_Y] = getHeight() / 2 - imageHeight / 2;
+        // Allow free pan even when the page fits the view, plus soft overscroll past edges.
+        float minX = viewW - imageWidth - overX;
+        float maxX = overX;
+        float minY = viewH - imageHeight - overY;
+        float maxY = overY;
+
+        if (imageWidth <= viewW) {
+            // Center bias but still allow dragging past the page boundary.
+            float center = (viewW - imageWidth) / 2f;
+            minX = center - overX;
+            maxX = center + overX;
+        }
+        if (imageHeight <= viewH) {
+            float center = (viewH - imageHeight) / 2f;
+            minY = center - overY;
+            maxY = center + overY;
+        }
+
+        m[Matrix.MTRANS_X] = Math.min(maxX, Math.max(m[Matrix.MTRANS_X], minX));
+        m[Matrix.MTRANS_Y] = Math.min(maxY, Math.max(m[Matrix.MTRANS_Y], minY));
 
         matrix.setValues(m);
         return matrix;
@@ -340,14 +521,45 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
 
         float imageWidth = computeCurrentImageSize().x;
         float offsetX = computeCurrentOffset().x;
+        int viewW = getWidth();
+        float overX = viewW * OVERSCROLL;
+        float minX = viewW - imageWidth - overX;
+        float maxX = overX;
+        if (imageWidth <= viewW) {
+            float center = (viewW - imageWidth) / 2f;
+            minX = center - overX;
+            maxX = center + overX;
+        }
 
-        if (offsetX >= 0 && direction < 0) {
-            return false;
+        if (direction < 0) {
+            return offsetX < maxX - 1f;
+        } else {
+            return offsetX > minX + 1f;
         }
-        else if (Math.abs(offsetX) + getWidth() >= imageWidth && direction > 0) {
+    }
+
+    @Override
+    public boolean canScrollVertically(int direction) {
+        if (getDrawable() == null)
             return false;
+
+        float imageHeight = computeCurrentImageSize().y;
+        float offsetY = computeCurrentOffset().y;
+        int viewH = getHeight();
+        float overY = viewH * OVERSCROLL;
+        float minY = viewH - imageHeight - overY;
+        float maxY = overY;
+        if (imageHeight <= viewH) {
+            float center = (viewH - imageHeight) / 2f;
+            minY = center - overY;
+            maxY = center + overY;
         }
-        return true;
+
+        if (direction < 0) {
+            return offsetY < maxY - 1f;
+        } else {
+            return offsetY > minY + 1f;
+        }
     }
 
     private class ZoomAnimation implements Runnable {
@@ -392,6 +604,47 @@ public class PageImageView extends androidx.appcompat.widget.AppCompatImageView 
                 mMatrix.setScale(mScale, mScale);
                 mMatrix.postTranslate(m[Matrix.MTRANS_X], m[Matrix.MTRANS_Y]);
                 setImageMatrix(mMatrix);
+                if (Math.abs(mScale - mOriginalScale) < 0.01f) {
+                    mHomeMatrix.set(mMatrix);
+                }
+            }
+        }
+    }
+
+    private class SnapHomeAnimation implements Runnable {
+        private final Interpolator mInterpolator = new AccelerateDecelerateInterpolator();
+        private final long mStartTime = System.currentTimeMillis();
+        private final float[] mStart = new float[9];
+        private final float[] mEnd = new float[9];
+        private final float[] mCur = new float[9];
+
+        SnapHomeAnimation() {
+            mMatrix.getValues(mStart);
+            mHomeMatrix.getValues(mEnd);
+            // If home was never captured, rebuild fitted matrix.
+            if (mEnd[Matrix.MSCALE_X] == 0f) {
+                mSkipScaling = false;
+                scale();
+                mHomeMatrix.getValues(mEnd);
+            }
+        }
+
+        @Override
+        public void run() {
+            float t = (float) (System.currentTimeMillis() - mStartTime) / SNAP_DURATION_MS;
+            float ratio = mInterpolator.getInterpolation(Math.min(t, 1f));
+            for (int i = 0; i < 9; i++) {
+                mCur[i] = mStart[i] + (mEnd[i] - mStart[i]) * ratio;
+            }
+            mMatrix.setValues(mCur);
+            setImageMatrix(mMatrix);
+            if (t < 1f) {
+                post(this);
+            } else {
+                mMatrix.set(mHomeMatrix);
+                setImageMatrix(mMatrix);
+                mSnappingHome = false;
+                mUserPanned = false;
             }
         }
     }

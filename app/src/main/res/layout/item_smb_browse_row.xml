@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="horizontal"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:gravity="center_vertical"
+              android:paddingStart="12dp"
+              android:paddingEnd="12dp"
+              android:paddingTop="8dp"
+              android:paddingBottom="8dp"
+              android:minHeight="72dp"
+              android:background="?attr/selectableItemBackground">
+
+    <ImageView
+            android:id="@+id/smb_entry_cover"
+            android:layout_width="48dp"
+            android:layout_height="72dp"
+            android:scaleType="centerCrop"
+            android:background="#1A000000"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_collections_image_24"/>
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp">
+
+        <TextView
+                android:id="@+id/smb_entry_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="15sp"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textColor="?android:attr/textColorPrimary"/>
+
+        <TextView
+                android:id="@+id/smb_entry_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"/>
+    </LinearLayout>
+
+    <ImageView
+            android:id="@+id/smb_entry_read_check"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@string/read_checkmark_cd"
+            android:src="@drawable/ic_check_circle_24"
+            android:visibility="gone"/>
+</LinearLayout>

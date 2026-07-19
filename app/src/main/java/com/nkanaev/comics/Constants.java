@@ -1,8 +1,11 @@
 package com.nkanaev.comics;
 
 public class Constants {
-    public static final int COVER_THUMBNAIL_HEIGHT = 260;
-    public static final int COVER_THUMBNAIL_WIDTH = 260;
+    public static final int COVER_THUMBNAIL_HEIGHT = 480;
+    public static final int COVER_THUMBNAIL_WIDTH = 320;
+    /** Small thumbs for network library browse lists only (disk cache). */
+    public static final int COVER_NETWORK_THUMB_HEIGHT = 180;
+    public static final int COVER_NETWORK_THUMB_WIDTH = 120;
 
     public static final int MIN_RECENT_COUNT = 5;
 

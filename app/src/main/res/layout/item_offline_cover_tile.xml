@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:app="http://schemas.android.com/apk/res-auto"
+             android:layout_width="match_parent"
+             android:layout_height="wrap_content"
+             android:foreground="?attr/selectableItemBackground"
+             android:padding="6dp">
+
+    <com.nkanaev.comics.view.CoverImageView
+            android:id="@+id/offline_cover"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/card_gradient_end"
+            android:scaleType="centerCrop"
+            android:contentDescription="@null"/>
+
+    <TextView
+            android:id="@+id/offline_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="@drawable/gradient"
+            android:padding="8dp"
+            android:maxLines="3"
+            android:ellipsize="end"
+            style="@style/CardTitle"/>
+
+    <ImageView
+            android:id="@+id/offline_read_check"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="10dp"
+            android:contentDescription="@string/read_checkmark_cd"
+            android:src="@drawable/ic_check_circle_24"
+            android:visibility="gone"/>
+
+    <View
+            android:id="@+id/offline_selected"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#66007ACC"
+            android:visibility="gone"/>
+</FrameLayout>

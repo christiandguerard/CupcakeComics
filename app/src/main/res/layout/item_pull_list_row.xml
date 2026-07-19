@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="horizontal"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:gravity="center_vertical"
+              android:foreground="?attr/selectableItemBackground"
+              android:paddingStart="12dp"
+              android:paddingEnd="12dp"
+              android:paddingTop="10dp"
+              android:paddingBottom="10dp"
+              android:minHeight="140dp">
+
+    <com.nkanaev.comics.view.CoverImageView
+            android:id="@+id/pull_cover"
+            android:layout_width="96dp"
+            android:layout_height="wrap_content"
+            android:background="@color/card_gradient_end"
+            android:contentDescription="@null"/>
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp">
+
+        <TextView
+                android:id="@+id/pull_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:maxLines="3"
+                android:ellipsize="end"
+                android:textColor="?android:attr/textColorPrimary"/>
+
+        <TextView
+                android:id="@+id/pull_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="13sp"
+                android:textColor="?android:attr/textColorSecondary"/>
+
+        <TextView
+                android:id="@+id/pull_eta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:visibility="gone"/>
+
+        <ProgressBar
+                android:id="@+id/pull_release_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginTop="4dp"
+                android:max="1000"
+                android:progress="0"
+                android:progressDrawable="@drawable/pull_release_bar"
+                android:visibility="gone"/>
+    </LinearLayout>
+</LinearLayout>

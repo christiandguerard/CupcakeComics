@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
+
+        <CheckBox
+                android:id="@+id/reminder_edit_enabled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/reminders_enabled"
+                android:checked="true"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/reminders_frequency"
+                android:textStyle="bold"/>
+
+        <Spinner
+                android:id="@+id/reminder_edit_frequency"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/reminders_time"
+                android:textStyle="bold"/>
+
+        <Spinner
+                android:id="@+id/reminder_edit_hour"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+        <LinearLayout
+                android:id="@+id/reminder_edit_weekly_row"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/reminders_day_of_week"
+                    android:textStyle="bold"/>
+
+            <Spinner
+                    android:id="@+id/reminder_edit_day_of_week"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <LinearLayout
+                android:id="@+id/reminder_edit_monthly_row"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/reminders_day_of_month"
+                    android:textStyle="bold"/>
+
+            <Spinner
+                    android:id="@+id/reminder_edit_day_of_month"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <LinearLayout
+                android:id="@+id/reminder_edit_book_section"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/reminders_page_mode"
+                    android:textStyle="bold"/>
+
+            <Spinner
+                    android:id="@+id/reminder_edit_page_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"/>
+
+            <TextView
+                    android:id="@+id/reminder_edit_book_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/reminders_no_book"
+                    android:textSize="14sp"/>
+
+            <Button
+                    android:id="@+id/reminder_edit_pick_book"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/reminders_pick_book"
+                    style="?android:attr/buttonBarButtonStyle"/>
+        </LinearLayout>
+
+        <Button
+                android:id="@+id/reminder_edit_save"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/reminders_save"/>
+
+        <Button
+                android:id="@+id/reminder_edit_delete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/reminders_delete"
+                style="?android:attr/buttonBarButtonStyle"/>
+    </LinearLayout>
+</ScrollView>

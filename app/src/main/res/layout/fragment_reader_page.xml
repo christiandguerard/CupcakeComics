@@ -1,16 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:orientation="vertical"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             android:background="@color/darkest">
+
     <com.nkanaev.comics.view.PageImageView
             android:id="@+id/pageImageView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="@color/darkest"
             android:visibility="gone"/>
+
     <RelativeLayout
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent">
+            android:id="@+id/pageOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/darkest">
         <ImageButton
                 android:id="@+id/errorButton"
                 android:layout_width="wrap_content"
@@ -21,4 +26,4 @@
                 android:src="@drawable/broken"/>
         <include layout="@layout/progress_image"/>
     </RelativeLayout>
-</LinearLayout>
+</FrameLayout>
