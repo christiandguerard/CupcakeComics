@@ -317,12 +317,13 @@ class LocalFilesLibraryController(
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = items[position]
             val hide = hideTitles()
-            holder.title.visibility = if (hide) View.GONE else View.VISIBLE
-            if (!hide) {
+            val displayTitle = if (hide) "" else {
                 val title = Utils.removeExtensionIfAny(item.title)
                 val read = if (item.sourceKey in readKeys) " · Read" else ""
-                holder.title.text = title + read
+                title + read
             }
+            holder.title.text = displayTitle
+            holder.title.visibility = if (displayTitle.isBlank()) View.GONE else View.VISIBLE
             picasso.load(FileCoverHandler.uriFor(item.localPath)).into(holder.cover)
             holder.selected.visibility = if (selecting && item.id in selected) View.VISIBLE else View.GONE
             holder.itemView.setOnClickListener { onClick(item) }

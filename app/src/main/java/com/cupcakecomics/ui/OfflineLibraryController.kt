@@ -302,10 +302,9 @@ class OfflineLibraryController(
             val item = items[position]
             val hide = hideTitles()
             val isRead = item.sourceKey in readKeys
-            holder.title.visibility = if (hide) View.GONE else View.VISIBLE
-            if (!hide) {
-                holder.title.text = ComicFileNames.shortDisplayName(item.title)
-            }
+            val displayTitle = if (hide) "" else ComicFileNames.shortDisplayName(item.title)
+            holder.title.text = displayTitle
+            holder.title.visibility = if (displayTitle.isBlank()) View.GONE else View.VISIBLE
             holder.readCheck.visibility = if (isRead) View.VISIBLE else View.GONE
             picasso.load(FileCoverHandler.uriFor(item.localPath))
                 .into(holder.cover)

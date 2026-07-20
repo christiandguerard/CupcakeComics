@@ -285,10 +285,9 @@ class PullListLibraryController(
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = items[position]
             val hide = hideTitles()
-            holder.title.visibility = if (hide) View.GONE else View.VISIBLE
-            if (!hide) {
-                holder.title.text = Utils.removeExtensionIfAny(item.title)
-            }
+            val displayTitle = if (hide) "" else Utils.removeExtensionIfAny(item.title)
+            holder.title.text = displayTitle
+            holder.title.visibility = if (displayTitle.isBlank()) View.GONE else View.VISIBLE
             holder.cover.setImageResource(R.drawable.ic_collections_image_24)
             holder.cover.tag = item.identityKey
             holder.selected.visibility = View.GONE
