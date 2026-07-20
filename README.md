@@ -7,19 +7,21 @@ Modern Android comic reader fork of [Bubble2](https://github.com/edeso/bubble2) 
 
 ## Status
 
-Phase 1–3 bootstrap:
-
 - [x] Wayfinder decisions locked and SPEC approved
 - [x] Bubble2 cloned; `upstream` remote preserved
 - [x] Rebranded `applicationId` to `com.cupcakecomics.app`
 - [x] minSdk 30 / targetSdk 35 / compileSdk 36 / Kotlin plugin enabled
-- [x] Clean versionName `0.1.0` (no Bubble2 movie-quote tags)
+- [x] Clean versionName `0.1.0`
 - [x] Android Studio + wireless ADB; debug install on Pixel 6
 - [x] Room + EncryptedSharedPreferences connection profiles
 - [x] SMB browse (smbj, metadata listing) via drawer → Connections
 - [x] Library shows SMB shares (display name, comic count, total size)
 - [x] SMB stage + open comic in reader
-- [ ] Pull List / Kapowarr / Guided Panel
+- [x] **Pull List** — monitored folders, cadence estimator, ETA rows, enroll/unenroll
+- [x] **Kapowarr** — request flow, URL normalization, volume search
+- [x] **Phase 1 bug fixes** — SMB open when GPU off, progress/cancel, cover size cap, tile title
+- [x] **Phase 2 UX** — Pull List CTA, download snackbar, monitoring subfolder clarity
+- [/] **Guided Panel** — controller + PanelDetector stub scaffolded; TFLite model pending (SPEC Phase 6)
 
 ## Build
 
