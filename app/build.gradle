@@ -4,6 +4,10 @@ plugins {
     id("com.google.devtools.ksp") version "2.0.21-1.0.28"
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     // Cupcake Comics SPEC-v1: minSdk 30 / targetSdk 35; compileSdk 36 required by AndroidX activity 1.11+
     compileSdk = 36

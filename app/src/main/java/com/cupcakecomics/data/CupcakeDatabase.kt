@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         LocalFileEntity::class,
     ],
     version = 7,
-    exportSchema = false,
+    exportSchema = true,
 )
 @androidx.room.TypeConverters(ReminderConverters::class)
 abstract class CupcakeDatabase : RoomDatabase() {
@@ -35,14 +35,17 @@ abstract class CupcakeDatabase : RoomDatabase() {
 
         fun get(context: Context): CupcakeDatabase {
             return instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    CupcakeDatabase::class.java,
-                    "cupcake.db",
-                )
-                    .fallbackToDestructiveMigration()
-                    .build()
-                    .also { instance = it }
+                instance ?: run {
+                    val builder = Room.databaseBuilder(
+                        context.applicationContext,
+                        CupcakeDatabase::class.java,
+                        "cupcake.db",
+                    )
+                    if (com.nkanaev.comics.BuildConfig.DEBUG) {
+                        builder.fallbackToDestructiveMigration()
+                    }
+                    builder.build().also { instance = it }
+                }
             }
         }
     }
