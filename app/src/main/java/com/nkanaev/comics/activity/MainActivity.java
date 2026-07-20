@@ -1,5 +1,6 @@
 package com.nkanaev.comics.activity;
 
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.MenuItem;
