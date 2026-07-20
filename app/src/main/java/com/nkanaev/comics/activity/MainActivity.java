@@ -259,6 +259,9 @@ public class MainActivity extends AppCompatActivity
                     case R.id.drawer_menu_library:
                         setFragment(new LibraryFragment());
                         break;
+                    case R.id.drawer_menu_pull_list:
+                        setFragment(new com.cupcakecomics.ui.PullListFragment());
+                        break;
                     case R.id.drawer_menu_request:
                         setFragment(new RequestFragment());
                         break;

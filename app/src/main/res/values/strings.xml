@@ -128,7 +128,7 @@
     <string name="export_read_share_title">Cupcake Comics read history</string>
     <string name="offline_missing">Offline file missing</string>
     <string name="downloaded_offline_toast">Downloaded %1$d comic(s) for offline</string>
-    <string name="pull_list_empty">Nothing unread in your monitored folders.\nLong-press series folders in SMB browse to monitor them — new comics arrive here as unread.</string>
+    <string name="pull_list_empty">No unread issues yet.\n\nTap ⋮ → Manage Folders or long-press folders in SMB Browse to enroll folders and track new issues.</string>
     <string name="pull_list_no_folders">No monitored folders — enroll one from an SMB browse</string>
     <string name="pull_list_scan_done">Scan done: %1$d new unread · %2$d comics checked</string>
     <string name="pull_list_progress">p. %1$d / %2$d</string>

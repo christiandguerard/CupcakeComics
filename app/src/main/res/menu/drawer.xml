@@ -6,6 +6,9 @@
               android:icon="@drawable/ic_collections_image_24"
               android:checked="true"
               android:title="@string/menu_library"/>
+        <item android:id="@+id/drawer_menu_pull_list"
+              android:icon="@drawable/ic_collections_image_24"
+              android:title="@string/menu_pull_list"/>
         <item android:id="@+id/drawer_menu_request"
               android:icon="@drawable/ic_search_white_24dp"
               android:title="@string/menu_request"/>
