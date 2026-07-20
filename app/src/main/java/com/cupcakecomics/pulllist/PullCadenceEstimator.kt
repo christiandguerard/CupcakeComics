@@ -52,14 +52,22 @@ object PullCadenceEstimator {
         val share = connections.getSmbShare(folder.shareId)
             ?: return SeriesEta(folder.displayName, null, null, 0)
         val times = collectComicTimes(browser, share, folder.relativePath)
+        return computeEtaFromTimes(folder.displayName, times, nowMillis)
+    }
+
+    internal fun computeEtaFromTimes(
+        displayName: String,
+        times: List<Long>,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): SeriesEta {
         if (times.size < 2) {
-            return SeriesEta(folder.displayName, null, null, times.size)
+            return SeriesEta(displayName, null, null, times.size)
         }
         val sorted = times.sorted()
         val gaps = sorted.zipWithNext { a, b -> b - a }
             .filter { it in MIN_GAP_MS..MAX_GAP_MS }
         if (gaps.isEmpty()) {
-            return SeriesEta(folder.displayName, null, null, times.size)
+            return SeriesEta(displayName, null, null, times.size)
         }
         val median = median(gaps)
         val gapDays = TimeUnit.MILLISECONDS.toDays(median).toInt().coerceAtLeast(1)
@@ -73,7 +81,7 @@ object PullCadenceEstimator {
             next = nowMillis + median / 4
         }
         return SeriesEta(
-            seriesName = folder.displayName,
+            seriesName = displayName,
             nextAtMillis = next,
             typicalGapDays = gapDays,
             sampleCount = times.size,
@@ -115,7 +123,7 @@ object PullCadenceEstimator {
         }
     }
 
-    private fun formatLine(eta: SeriesEta, nowMillis: Long): String? {
+    internal fun formatLine(eta: SeriesEta, nowMillis: Long): String? {
         val next = eta.nextAtMillis ?: return null
         val gap = eta.typicalGapDays ?: return null
         val dayMs = DAY_MS.toDouble()
