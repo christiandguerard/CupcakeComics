@@ -79,8 +79,9 @@ class MonitoredFoldersFragment : Fragment() {
 
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = items[position]
+            val path = item.relativePath.ifBlank { "/" }
             holder.title.text = item.displayName
-            holder.subtitle.text = item.relativePath.ifBlank { "/" }
+            holder.subtitle.text = holder.itemView.context.getString(R.string.monitored_folder_path_recursive, path)
             holder.action.setOnClickListener { onUnenroll(item) }
         }
 

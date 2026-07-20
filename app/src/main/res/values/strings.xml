@@ -169,7 +169,8 @@
     <string name="monitored_folders_title">Monitored folders</string>
     <string name="monitored_folders_empty">No monitored folders yet.\nLong-press series folders in SMB browse to enroll them.</string>
     <string name="monitored_folders_unenroll">Stop</string>
-    <string name="monitored_folders_unenroll_confirm">Stop monitoring this folder? Comics already on your Pull List stay until you mark them read.</string>
+    <string name="monitored_folders_unenroll_confirm">Stop monitoring this folder and all its subfolders? Comics already on your Pull List stay until you mark them read.</string>
+    <string name="monitored_folder_path_recursive">%1$s · includes all subfolders</string>
     <string name="monitored_folders_unenrolled">Stopped monitoring folder</string>
     <string name="pull_list_tab_unread">Unread</string>
     <string name="pull_list_tab_estimates">Estimates</string>
