@@ -188,6 +188,7 @@ data class ReaderPreferences(
     val useGpuRenderer: Boolean = true,
     val useLanczos: Boolean = true,
     val lowPowerScaling: Boolean = false,
+    val panelMode: Boolean = false,
 )
 
 data class Bookmark(

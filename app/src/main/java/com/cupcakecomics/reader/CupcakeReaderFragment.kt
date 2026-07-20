@@ -86,6 +86,7 @@ class CupcakeReaderFragment : Fragment() {
     private var lastPagerOrientation: Int = -1
     private var lastTransition: PageTransition? = null
     private var allowPerpendicularAdvance = true
+    private val panelController = com.cupcakecomics.reader.panel.GuidedPanelController()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -146,6 +147,13 @@ class CupcakeReaderFragment : Fragment() {
             onEdgeTap = { forward ->
                 if (viewModel.session.value.chromeVisible) {
                     viewModel.setChromeVisible(false)
+                } else if (viewModel.session.value.preferences.panelMode) {
+                    val pageNeeded = if (forward) panelController.advance() else panelController.retreat()
+                    if (pageNeeded) {
+                        viewModel.advance(forward)
+                    } else {
+                        updatePanelOverlay()
+                    }
                 } else {
                     viewModel.advance(forward)
                 }
@@ -919,7 +927,17 @@ class CupcakeReaderFragment : Fragment() {
             .show()
     }
 
+    private fun updatePanelOverlay() {
+        val overlay = view?.findViewById<View>(R.id.reader_panel_overlay) ?: return
+        if (!viewModel.session.value.preferences.panelMode) {
+            overlay.visibility = View.GONE
+            return
+        }
+        overlay.visibility = View.VISIBLE
+    }
+
     private fun showOptionsMenu() {
+        val panelState = if (viewModel.session.value.preferences.panelMode) "ON" else "OFF"
         val items = arrayOf(
             getString(R.string.reader_pages_layout),
             getString(R.string.reader_fit_options),
@@ -933,6 +951,7 @@ class CupcakeReaderFragment : Fragment() {
             getString(R.string.reader_lock_rotation),
             getString(R.string.reader_split_spreads),
             getString(R.string.action_view_rotate),
+            "Guided Panels ($panelState)",
         )
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.reader_options)
@@ -952,6 +971,10 @@ class CupcakeReaderFragment : Fragment() {
                     11 -> {
                         viewModel.rotateCurrentPage(90)
                         lastSlot = -1
+                    }
+                    12 -> {
+                        viewModel.updatePreferences { it.copy(panelMode = !it.panelMode) }
+                        updatePanelOverlay()
                     }
                 }
             }

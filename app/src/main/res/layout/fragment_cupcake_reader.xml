@@ -27,6 +27,13 @@
         android:visibility="gone"
         android:overScrollMode="never" />
 
+    <View
+        android:id="@+id/reader_panel_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#33007ACC"
+        android:visibility="gone" />
+
     <RelativeLayout
         android:id="@+id/reader_loading"
         android:layout_width="match_parent"
