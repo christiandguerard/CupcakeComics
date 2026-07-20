@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!--
-      Cleartext permitted so Kapowarr can use http:// on arbitrary LAN IPs
-      (NSC cannot express RFC1918 CIDR ranges). Public cleartext is blocked in
-      KapowarrClient / KapowarrEditFragment. Outside-LAN Kapowarr uses HTTPS.
-      SMB is not HTTP and is unaffected.
+      WHY cleartextTrafficPermitted="true":
+        Android NSC cannot express RFC-1918 CIDR ranges (10.x, 192.168.x, 172.16-31.x).
+        Kapowarr is commonly hosted on LAN IPs using http://. We allow cleartext globally
+        at the OS level but enforce "LAN-only http" in app code:
+          - KapowarrUrls.normalize(): auto-prefixes LAN hosts with http://, public with https://
+          - KapowarrUrls.isPrivateLanHttp(): gates cleartext at connection time
+          - KapowarrEditFragment: rejects public http:// Kapowarr URLs at save time
+          - SMB is not HTTP and is unaffected by this NSC setting.
+        FUTURE: If a domain allow-list becomes feasible, restrict via <domain> entries.
     -->
     <base-config cleartextTrafficPermitted="true"/>
 </network-security-config>
