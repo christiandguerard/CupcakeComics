@@ -429,11 +429,18 @@ class SmbBrowseFragment : Fragment() {
     private fun enqueueBackgroundDownloads(shareId: Long, paths: List<String>) {
         if (paths.isEmpty()) return
         com.cupcakecomics.downloads.OfflineDownloadWorker.enqueue(requireContext(), shareId, paths)
-        Toast.makeText(
-            requireContext(),
+        val v = view ?: return
+        com.google.android.material.snackbar.Snackbar.make(
+            v,
             getString(R.string.offline_download_queued, paths.size),
-            Toast.LENGTH_SHORT,
-        ).show()
+            com.google.android.material.snackbar.Snackbar.LENGTH_LONG,
+        ).setAction(R.string.offline_section_view) {
+            (activity as? MainActivity)?.let { main ->
+                val fragment = com.nkanaev.comics.fragment.LibraryFragment()
+                main.pushFragment(fragment)
+                main.window.decorView.post { fragment.scrollToSection("offline") }
+            }
+        }.show()
         (activity as? MainActivity)?.let {
             com.cupcakecomics.notifications.NotifyPermissionPrompt.maybeShow(it)
         }

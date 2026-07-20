@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity
     private final static String STATE_CURRENT_MENU_ITEM = "STATE_CURRENT_MENU_ITEM";
     private final static String STATE_INITIAL_SCAN_RAN_ALREADY = "INITIAL_SCAN_FINISHED";
     public static final String EXTRA_OPEN_PULL_LIST = "EXTRA_OPEN_PULL_LIST";
+    public static final String EXTRA_NAVIGATE_SECTION = "EXTRA_NAVIGATE_SECTION";
     public static String PACKAGE_NAME;
 
     private DrawerLayout mDrawerLayout;
@@ -144,6 +145,8 @@ public class MainActivity extends AppCompatActivity
                 // Defer so Library is the back-stack base under the Pull List screen.
                 getWindow().getDecorView().post(() ->
                         pushFragment(new com.cupcakecomics.ui.PullListFragment()));
+            } else {
+                handleIntentSection(getIntent());
             }
             PullListWorker.schedule(this);
             CupcakeNotifications.ensureChannels(this);
@@ -153,6 +156,23 @@ public class MainActivity extends AppCompatActivity
             onBackStackChanged();  // force-call method to ensure indicator is shown properly
             mCurrentNavItem = savedInstanceState.getInt(STATE_CURRENT_MENU_ITEM);
             navigationView.getMenu().findItem(mCurrentNavItem).setChecked(true);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntentSection(intent);
+    }
+
+    private void handleIntentSection(Intent intent) {
+        if (intent == null) return;
+        String section = intent.getStringExtra(EXTRA_NAVIGATE_SECTION);
+        if (section != null && !section.isEmpty()) {
+            LibraryFragment fragment = new LibraryFragment();
+            setFragment(fragment);
+            getWindow().getDecorView().post(() -> fragment.scrollToSection(section));
         }
     }
 

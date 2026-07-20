@@ -115,7 +115,7 @@ object CupcakeNotifications {
             return
         }
         val pretty = titles.map { displayTitle(it, settings) }
-        val open = pullListIntent(app)
+        val open = offlineIntent(app)
         val pending = PendingIntent.getActivity(
             app, 1, open,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -234,6 +234,12 @@ object CupcakeNotifications {
         Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(MainActivity.EXTRA_OPEN_PULL_LIST, true)
+        }
+
+    private fun offlineIntent(context: Context): Intent =
+        Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_NAVIGATE_SECTION, "offline")
         }
 
     private fun appendPending(context: Context, titles: List<String>) {

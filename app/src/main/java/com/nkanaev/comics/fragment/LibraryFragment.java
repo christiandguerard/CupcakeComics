@@ -899,4 +899,23 @@ public class LibraryFragment extends Fragment
             outRect.bottom = mSpacing;
         }
     }
+
+    public void scrollToSection(String sectionTag) {
+        if (mSectionsContainer == null) return;
+        View target = mSectionsContainer.findViewById(R.id.library_section_offline);
+        if ("pull".equalsIgnoreCase(sectionTag)) {
+            target = mSectionsContainer.findViewById(R.id.library_section_pull);
+        } else if ("local".equalsIgnoreCase(sectionTag)) {
+            target = mSectionsContainer.findViewById(R.id.library_section_local);
+        } else if ("smb".equalsIgnoreCase(sectionTag)) {
+            target = mSectionsContainer.findViewById(R.id.library_section_smb);
+        }
+        if (target != null && getView() != null) {
+            View scroll = getView().findViewById(R.id.library_scroll);
+            if (scroll instanceof androidx.core.widget.NestedScrollView) {
+                final View t = target;
+                scroll.post(() -> ((androidx.core.widget.NestedScrollView) scroll).smoothScrollTo(0, t.getTop()));
+            }
+        }
+    }
 }

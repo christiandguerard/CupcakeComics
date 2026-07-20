@@ -142,6 +142,7 @@
     <string name="pull_list_channel_desc">Alerts when new unread comics appear on your Pull List</string>
     <string name="downloads_channel">Downloads</string>
     <string name="downloads_channel_desc">Alerts when offline downloads finish</string>
+    <string name="offline_section_view">View</string>
     <string name="pull_list_notify_title">New Pull List issues</string>
     <string name="pull_list_notify_title_one">New on Pull List</string>
     <string name="pull_list_notify_title_many">%1$d new on Pull List</string>
