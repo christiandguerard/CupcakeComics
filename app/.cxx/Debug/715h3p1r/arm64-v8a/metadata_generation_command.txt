@@ -1,19 +1,19 @@
-                        -HM:\Project Work\Cupcake Comics\app\src\main\cpp
+                        -H/app/data/CupcakeComics/app/src/main/cpp
 -DCMAKE_SYSTEM_NAME=Android
 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 -DCMAKE_SYSTEM_VERSION=30
 -DANDROID_PLATFORM=android-30
 -DANDROID_ABI=arm64-v8a
 -DCMAKE_ANDROID_ARCH_ABI=arm64-v8a
--DANDROID_NDK=C:\Users\reade\AppData\Local\Android\Sdk\ndk\27.0.12077973
--DCMAKE_ANDROID_NDK=C:\Users\reade\AppData\Local\Android\Sdk\ndk\27.0.12077973
--DCMAKE_TOOLCHAIN_FILE=C:\Users\reade\AppData\Local\Android\Sdk\ndk\27.0.12077973\build\cmake\android.toolchain.cmake
--DCMAKE_MAKE_PROGRAM=C:\Users\reade\AppData\Local\Android\Sdk\cmake\3.22.1\bin\ninja.exe
+-DANDROID_NDK=/app/data/android-sdk/ndk/27.0.12077973
+-DCMAKE_ANDROID_NDK=/app/data/android-sdk/ndk/27.0.12077973
+-DCMAKE_TOOLCHAIN_FILE=/app/data/android-sdk/ndk/27.0.12077973/build/cmake/android.toolchain.cmake
+-DCMAKE_MAKE_PROGRAM=/app/data/android-sdk/cmake/3.22.1/bin/ninja
 -DCMAKE_CXX_FLAGS=-std=c++17 -frtti -fexceptions
--DCMAKE_LIBRARY_OUTPUT_DIRECTORY=M:\Project Work\Cupcake Comics\app\build\intermediates\cxx\Debug\715h3p1r\obj\arm64-v8a
--DCMAKE_RUNTIME_OUTPUT_DIRECTORY=M:\Project Work\Cupcake Comics\app\build\intermediates\cxx\Debug\715h3p1r\obj\arm64-v8a
+-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=/app/data/CupcakeComics/app/build/intermediates/cxx/Debug/715h3p1r/obj/arm64-v8a
+-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/app/data/CupcakeComics/app/build/intermediates/cxx/Debug/715h3p1r/obj/arm64-v8a
 -DCMAKE_BUILD_TYPE=Debug
--BM:\Project Work\Cupcake Comics\app\.cxx\Debug\715h3p1r\arm64-v8a
+-B/app/data/CupcakeComics/app/.cxx/Debug/715h3p1r/arm64-v8a
 -GNinja
 -DANDROID_STL=c++_shared
 -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON

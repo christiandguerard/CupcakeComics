@@ -1,1 +1,1 @@
-M:\Project Work\Cupcake Comics\app\build\intermediates\cxx\Debug\715h3p1r\obj\x86_64
+/app/data/CupcakeComics/app/build/intermediates/cxx/Debug/715h3p1r/obj/x86_64

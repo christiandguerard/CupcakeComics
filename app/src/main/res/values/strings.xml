@@ -403,13 +403,30 @@
     <string name="settings_debug_feedback_hint">Shows a pencil button on every screen. Tap it to capture a screenshot and UI context into a markdown file under Downloads/CupcakeFeedback (also copied to the clipboard). Pull into the project feedback/ folder to review and send to Cursor.</string>
     <string name="feedback_fab_cd">Send feedback</string>
     <string name="feedback_dialog_title">Send feedback</string>
-    <string name="feedback_dialog_message">Describe what looks wrong or what you want changed. A screenshot and current screen context are included automatically.</string>
-    <string name="feedback_note_hint">What should we look at?</string>
+    <string name="feedback_title_hint">Short title (e.g. "Browser lags on folder enter")</string>
+    <string name="feedback_note_hint">Detailed description…</string>
     <string name="feedback_submit">Save report</string>
     <string name="feedback_saved_toast">Feedback saved to %1$s (markdown also on clipboard)</string>
     <string name="feedback_failed_toast">Feedback failed: %1$s</string>
     <string name="feedback_enabled_toast">Feedback button on</string>
     <string name="feedback_disabled_toast">Feedback button off</string>
+
+    <string name="settings_section_feedback_upload">Feedback upload</string>
+    <string name="settings_feedback_github_token">GitHub token</string>
+    <string name="settings_feedback_github_token_hint">Personal Access Token with \'issues:write\' scope for the repo below</string>
+    <string name="settings_feedback_github_repo">GitHub repo</string>
+    <string name="settings_feedback_github_repo_hint">owner/repo (e.g. christiandguerard/CupcakeComics)</string>
+    <string name="settings_feedback_auto_upload">Auto-upload on Wi-Fi</string>
+    <string name="settings_feedback_auto_upload_hint">Send pending feedback reports to GitHub Issues automatically when connected to Wi-Fi</string>
+    <string name="feedback_upload_status_toast">Uploading feedback to GitHub…</string>
+    <string name="feedback_upload_ok_toast">Feedback uploaded — issue #%1$d</string>
+    <string name="feedback_upload_fail_toast">Upload failed: %1$s</string>
+    <string name="feedback_history_title">Feedback history</string>
+    <string name="feedback_history_pending">Pending</string>
+    <string name="feedback_history_submitted">Submitted</string>
+    <string name="feedback_history_addressed">Addressed</string>
+    <string name="feedback_history_empty">No feedback reports yet.</string>
+    <string name="feedback_history_sync">Sync status</string>
 
     <string name="reminders_channel">Reading reminders</string>
     <string name="reminders_channel_desc">Scheduled reminders for Pull List and book reading</string>

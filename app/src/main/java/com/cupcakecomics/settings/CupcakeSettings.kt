@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import com.nkanaev.comics.BuildConfig
 
 /**
  * App-wide Cupcake preferences (Pull List, notifications, library display, storage).
@@ -120,8 +121,22 @@ class CupcakeSettings(context: Context) {
      * Captures screenshot + UI context into markdown for Cursor review.
      */
     var debugFeedbackEnabled: Boolean
-        get() = prefs.getBoolean(KEY_DEBUG_FEEDBACK, false)
+        get() = prefs.getBoolean(KEY_DEBUG_FEEDBACK, true)
         set(value) = prefs.edit().putBoolean(KEY_DEBUG_FEEDBACK, value).apply()
+
+    // —— GitHub feedback upload ——
+
+    var feedbackGithubToken: String
+        get() = prefs.getString(KEY_FEEDBACK_GITHUB_TOKEN, "").orEmpty()
+        set(value) = prefs.edit().putString(KEY_FEEDBACK_GITHUB_TOKEN, value.trim()).apply()
+
+    var feedbackGithubRepo: String
+        get() = prefs.getString(KEY_FEEDBACK_GITHUB_REPO, "").orEmpty()
+        set(value) = prefs.edit().putString(KEY_FEEDBACK_GITHUB_REPO, value.trim()).apply()
+
+    var feedbackAutoUpload: Boolean
+        get() = prefs.getBoolean(KEY_FEEDBACK_AUTO_UPLOAD, false)
+        set(value) = prefs.edit().putBoolean(KEY_FEEDBACK_AUTO_UPLOAD, value).apply()
 
     fun canAutoDownloadNow(context: Context): Boolean {
         if (!pullListAutoDownload) return false
@@ -151,6 +166,9 @@ class CupcakeSettings(context: Context) {
         private const val KEY_COVER_SIZE = "cupcake_cover_size"
         private const val KEY_SECTION_ORDER = "cupcake_library_section_order"
         private const val KEY_DEBUG_FEEDBACK = "cupcake_debug_feedback"
+        private const val KEY_FEEDBACK_GITHUB_TOKEN = "cupcake_feedback_github_token"
+        private const val KEY_FEEDBACK_GITHUB_REPO = "cupcake_feedback_github_repo"
+        private const val KEY_FEEDBACK_AUTO_UPLOAD = "cupcake_feedback_auto_upload"
 
         const val DEFAULT_SCAN_MINUTES = 30
         const val DEFAULT_LEAVE_THRESHOLD = 0.90f

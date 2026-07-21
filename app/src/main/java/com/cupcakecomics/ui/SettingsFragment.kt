@@ -38,6 +38,7 @@ import com.cupcakecomics.smb.SmbBrowser
 import com.cupcakecomics.smb.SmbStageManager
 import com.nkanaev.comics.Constants
 import com.nkanaev.comics.MainApplication
+import androidx.appcompat.app.AlertDialog
 import com.nkanaev.comics.R
 import com.nkanaev.comics.activity.MainActivity
 import com.nkanaev.comics.fragment.AboutFragment

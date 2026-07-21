@@ -73,6 +73,12 @@ android {
         buildConfig = true
     }
 
+    // Injected from the CI/build environment so feedback works out of the box.
+    // $GH_TOKEN is a fine-grained PAT with issues:write on the feedback repo.
+    def ghToken = System.getenv("GH_TOKEN") ?: ""
+    defaultConfig.buildConfigField "String", "FEEDBACK_GITHUB_TOKEN", "\"${ghToken}\""
+    defaultConfig.buildConfigField "String", "FEEDBACK_GITHUB_REPO", "\"christiandguerard/CupcakeComics\""
+
     buildTypes {
         debug {
             applicationIdSuffix = '.debug'

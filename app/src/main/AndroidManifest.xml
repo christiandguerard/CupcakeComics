@@ -301,5 +301,11 @@
                 android:name="androidx.work.impl.foreground.SystemForegroundService"
                 android:foregroundServiceType="dataSync"
                 tools:node="merge"/>
+
+        <activity
+                android:name="com.cupcakecomics.feedback.FeedbackHistoryActivity"
+                android:label="@string/feedback_history_title"
+                android:parentActivityName=".activity.MainActivity"
+                android:exported="false" />
     </application>
 </manifest>

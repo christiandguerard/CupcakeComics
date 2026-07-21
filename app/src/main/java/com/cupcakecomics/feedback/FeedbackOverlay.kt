@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatEditText
@@ -17,6 +18,7 @@ import java.lang.ref.WeakReference
 
 /**
  * Shows a floating feedback button on every Activity while the debug setting is on.
+ * Tapping it opens a dialog with a title field + a description field.
  */
 object FeedbackOverlay {
     private const val TAG = "cupcake_feedback_fab"
@@ -99,21 +101,43 @@ object FeedbackOverlay {
 
     private fun showFeedbackDialog(activity: Activity, fab: View) {
         val pad = (20 * activity.resources.displayMetrics.density).toInt()
-        val input = AppCompatEditText(activity).apply {
+
+        // Title input
+        val titleInput = AppCompatEditText(activity).apply {
+            hint = activity.getString(R.string.feedback_title_hint)
+            maxLines = 1
+            setPadding(pad, pad, pad, pad / 2)
+        }
+
+        // Description input
+        val descInput = AppCompatEditText(activity).apply {
             hint = activity.getString(R.string.feedback_note_hint)
             minLines = 3
             maxLines = 8
-            setPadding(pad, pad, pad, pad)
+            setPadding(pad, pad / 2, pad, pad)
+        }
+
+        val layout = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(titleInput)
+            addView(descInput)
         }
 
         AlertDialog.Builder(activity)
             .setTitle(R.string.feedback_dialog_title)
-            .setMessage(R.string.feedback_dialog_message)
-            .setView(input)
+            .setView(layout)
             .setPositiveButton(R.string.feedback_submit) { _, _ ->
-                val note = input.text?.toString().orEmpty()
+                val title = titleInput.text?.toString().orEmpty().trim()
+                val desc = descInput.text?.toString().orEmpty().trim()
+                val note = if (title.isNotBlank()) "$title\n\n$desc" else desc
                 try {
                     val result = FeedbackCapture.capture(activity, note, hideViews = listOf(fab))
+                    // Attempt GitHub upload
+                    try {
+                        FeedbackUploader.uploadReport(activity, result, title)
+                    } catch (_: Throwable) {
+                        // Upload failure is non-fatal — files are saved locally
+                    }
                     Toast.makeText(
                         activity,
                         activity.getString(
