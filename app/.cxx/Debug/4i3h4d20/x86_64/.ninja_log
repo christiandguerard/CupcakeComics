@@ -1,5 +1,0 @@
-# ninja log v5
-16	149	8059218648411973	CMakeFiles/cupcake_image.dir/cupcake_image.cpp.o	a8b9a76ef256459b
-32	1604	8059218662877050	CMakeFiles/cupcake_image.dir/color_correct.cpp.o	694816312249c460
-0	2122	8059218668034742	CMakeFiles/cupcake_image.dir/lanczos.cpp.o	7f163be52cc81dc4
-2122	2304	8059218669908157	M:/Project Work/Cupcake Comics/app/build/intermediates/cxx/Debug/4i3h4d20/obj/x86_64/libcupcake_image.so	d1a2e9efca1bb0f9

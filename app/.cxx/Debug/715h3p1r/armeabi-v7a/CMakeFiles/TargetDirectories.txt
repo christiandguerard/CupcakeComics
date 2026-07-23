@@ -1,3 +1,0 @@
-/app/data/CupcakeComics/app/.cxx/Debug/715h3p1r/armeabi-v7a/CMakeFiles/cupcake_image.dir
-/app/data/CupcakeComics/app/.cxx/Debug/715h3p1r/armeabi-v7a/CMakeFiles/edit_cache.dir
-/app/data/CupcakeComics/app/.cxx/Debug/715h3p1r/armeabi-v7a/CMakeFiles/rebuild_cache.dir

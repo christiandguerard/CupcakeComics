@@ -43,8 +43,6 @@ import-summary.txt
 /app/debug/
 /app/release/
 
-
-
 .bug-hunter/
 .cxx/
 
