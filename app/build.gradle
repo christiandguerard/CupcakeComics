@@ -23,7 +23,10 @@ android {
 
         // Clean Cupcake version — do not derive from Bubble2 git tags (they embed movie-quote titles).
         versionName = "0.1.0"
-        versionCode = 1
+        // In CI: use GITHUB_RUN_NUMBER or git commit count for sequential versionCode
+        // Local builds default to 1
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: 
+                       System.getenv("CI_VERSION_CODE") ?: 1).toInteger()
         base.archivesName = "CupcakeComics-${versionName}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -65,6 +68,29 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
+
+    signingConfigs {
+        release {
+            // In CI: set env vars GH_RELEASE_KEYSTORE, GH_RELEASE_STORE_PASSWORD,
+            // GH_RELEASE_KEY_ALIAS, GH_RELEASE_KEY_PASSWORD
+            // Locally: create keystore.properties in project root
+            def keystorePropsFile = rootProject.file('keystore.properties')
+            if (keystorePropsFile.exists()) {
+                def props = new Properties()
+                props.load(new FileInputStream(keystorePropsFile))
+                storeFile = file(props['storeFile'])
+                storePassword = props['storePassword']
+                keyAlias = props['keyAlias']
+                keyPassword = props['keyPassword']
+            } else {
+                storeFile = file(System.getenv('GH_RELEASE_KEYSTORE') ?: 'release.keystore')
+                storePassword = System.getenv('GH_RELEASE_STORE_PASSWORD') ?: ''
+                keyAlias = System.getenv('GH_RELEASE_KEY_ALIAS') ?: 'cupcake'
+                keyPassword = System.getenv('GH_RELEASE_KEY_PASSWORD') ?: ''
+            }
+        }
+    }
+
     kotlinOptions {
         jvmTarget = "11"
     }
@@ -88,6 +114,8 @@ android {
             ]
         }
         release {
+            signingConfig = signingConfigs.release
+
             // can't use either of the below, f**ks up JP2 support
 
             // Enables code shrinking, obfuscation, and optimization for only

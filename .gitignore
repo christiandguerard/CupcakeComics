@@ -47,3 +47,8 @@ import-summary.txt
 
 .bug-hunter/
 .cxx/
+
+# Keystore (release signing)
+keystore.properties
+release.keystore
+*.keystore
