@@ -5,9 +5,11 @@ import android.content.res.Configuration
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cupcakecomics.pulllist.PullListRepository
+import com.cupcakecomics.reminders.DailyReadingTracker
 import com.cupcakecomics.reminders.ReminderRepository
 import com.cupcakecomics.reader.layout.PageLayoutEngine
 import com.cupcakecomics.reader.model.PageDescriptor
+import com.cupcakecomics.reader.model.PageSlot
 import com.cupcakecomics.reader.model.ReaderPreferences
 import com.cupcakecomics.reader.model.ReaderSession
 import com.cupcakecomics.reader.model.ReadingFlow
@@ -18,8 +20,10 @@ import com.nkanaev.comics.model.Comic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -29,6 +33,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private val settingsStore = ReaderSettingsStore(application)
     private val pullRepo = PullListRepository(application)
     private val reminderRepo = ReminderRepository(application)
+    private val dailyTracker = DailyReadingTracker(application)
 
     private var pageSource: PageSource? = null
     private var comic: Comic? = null
@@ -36,11 +41,17 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private var localFilePath: String? = null
     private var warmJob: Job? = null
     private var progressJob: Job? = null
+    /** High-water slot index for daily page counting; only moves forward. */
+    private var lastCountedSlotIndex = 0
     private var screenPortrait: Boolean =
         application.resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
 
     private val _session = MutableStateFlow(ReaderSession())
     val session: StateFlow<ReaderSession> = _session.asStateFlow()
+
+    private val _dailyGoalMet = MutableSharedFlow<DailyReadingTracker.GoalMet>(extraBufferCapacity = 1)
+    val dailyGoalMet: kotlinx.coroutines.flow.SharedFlow<DailyReadingTracker.GoalMet> =
+        _dailyGoalMet.asSharedFlow()
 
     @Volatile private var stageCancelledFlag = false
     private val _stageProgress = MutableStateFlow<Pair<Long, Long>?>(null)
@@ -130,6 +141,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                     else -> maxOf(savedPage, pullPage).let { if (it > 1) it - 1 else 0 }
                 }
                 val slotIdx = PageLayoutEngine.slotIndexForPage(slots, startPage)
+                lastCountedSlotIndex = slotIdx
                 _session.update {
                     it.copy(
                         pageCount = count,
@@ -175,7 +187,33 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         if (clamped == _session.value.currentSlotIndex) return
         _session.update { it.copy(currentSlotIndex = clamped) }
         warmAround(clamped)
-        if (fromUser) scheduleProgress()
+        if (fromUser) {
+            countDailyPages(slots, clamped)
+            scheduleProgress()
+        }
+    }
+
+    private fun countDailyPages(slots: List<PageSlot>, newSlotIndex: Int) {
+        // Slots are chronological regardless of reading flow, so a higher slot
+        // index always means forward progress. Backward moves leave the high
+        // water untouched so re-reading never double-counts.
+        val last = lastCountedSlotIndex
+        if (newSlotIndex <= last) return
+        lastCountedSlotIndex = newSlotIndex
+        val from = slots.getOrNull(last) ?: return
+        val to = slots.getOrNull(newSlotIndex) ?: return
+        val delta = (PageLayoutEngine.highestPageInSlot(to) - PageLayoutEngine.highestPageInSlot(from))
+            .coerceAtLeast(0)
+        if (delta <= 0) return
+        val keys = buildSet {
+            identityKey?.takeIf { it.isNotBlank() }?.let { add(it) }
+            localFilePath?.takeIf { it.isNotBlank() }?.let { add(it) }
+        }
+        if (keys.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val met = runCatching { dailyTracker.addPages(keys, delta) }.getOrNull() ?: return@launch
+            _dailyGoalMet.tryEmit(met)
+        }
     }
 
     fun goToPage(pageIndex: Int) {
@@ -251,6 +289,9 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             screenPortrait = screenPortrait,
         )
         val slotIdx = PageLayoutEngine.slotIndexForPage(slots, page)
+        // Layout changes remap slot indices; re-anchor the daily-count baseline
+        // at the current page so prior slots are never re-counted.
+        lastCountedSlotIndex = slotIdx
         _session.update { it.copy(slots = slots, currentSlotIndex = slotIdx) }
         warmAround(slotIdx)
     }

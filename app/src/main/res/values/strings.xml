@@ -450,10 +450,12 @@
     <string name="reminders_type_book">Book</string>
     <string name="reminders_mode_page_a_day">Page-a-day</string>
     <string name="reminders_mode_resume">Resume progress</string>
+    <string name="reminders_mode_goal">Goal: %1$d pages/day</string>
     <string name="reminders_schedule_daily">Daily at %1$s</string>
     <string name="reminders_schedule_weekly">Weekly on %1$s at %2$s</string>
     <string name="reminders_schedule_monthly">Monthly on day %1$d at %2$s</string>
     <string name="reminders_no_book">No book selected</string>
+    <string name="reader_daily_goal_met">Daily goal met — %1$d pages of %2$s today</string>
 
     <string name="book_picker_title">Pick a book</string>
     <string name="book_picker_tab_library">Library</string>
