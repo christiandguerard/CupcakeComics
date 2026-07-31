@@ -156,8 +156,8 @@ class SmbEditFragment : Fragment() {
                         repo.updateSmbStats(id, it.comicCount, it.totalBytes)
                     }
                 }
+                // Connection verified — drop back to the Connections list.
                 (activity as MainActivity).supportFragmentManager.popBackStack()
-                (activity as MainActivity).pushFragment(SmbBrowseFragment.newInstance(id))
             }
         }
         return view
