@@ -332,7 +332,6 @@ class SettingsFragment : Fragment() {
         val axis = view.findViewById<Spinner>(R.id.settings_transition_axis)
         val layoutP = view.findViewById<Spinner>(R.id.settings_layout_portrait)
         val layoutL = view.findViewById<Spinner>(R.id.settings_layout_landscape)
-        val gpu = view.findViewById<CheckBox>(R.id.settings_gpu_reader)
         val crop = view.findViewById<CheckBox>(R.id.settings_crop_borders)
         val split = view.findViewById<CheckBox>(R.id.settings_split_spreads)
 
@@ -347,7 +346,6 @@ class SettingsFragment : Fragment() {
         axis.setSelection(prefs.transitions.axis.ordinal.coerceIn(0, 2))
         layoutP.setSelection(prefs.layout.portrait.ordinal.coerceIn(0, 4))
         layoutL.setSelection(prefs.layout.landscape.ordinal.coerceIn(0, 4))
-        gpu.isChecked = prefs.useGpuRenderer
         crop.isChecked = prefs.cropBorders
         split.isChecked = prefs.splitSpreads
         bindingSpinners = false
@@ -364,7 +362,6 @@ class SettingsFragment : Fragment() {
                     portrait = PagesLayout.entries[layoutP.selectedItemPosition.coerceIn(0, PagesLayout.entries.lastIndex)],
                     landscape = PagesLayout.entries[layoutL.selectedItemPosition.coerceIn(0, PagesLayout.entries.lastIndex)],
                 ),
-                useGpuRenderer = gpu.isChecked,
                 cropBorders = crop.isChecked,
                 splitSpreads = split.isChecked,
             )
@@ -379,7 +376,6 @@ class SettingsFragment : Fragment() {
         axis.onItemSelectedListener = spinnerListener
         layoutP.onItemSelectedListener = spinnerListener
         layoutL.onItemSelectedListener = spinnerListener
-        gpu.setOnCheckedChangeListener { _, _ -> persistReading() }
         crop.setOnCheckedChangeListener { _, _ -> persistReading() }
         split.setOnCheckedChangeListener { _, _ -> persistReading() }
     }

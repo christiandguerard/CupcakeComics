@@ -47,7 +47,6 @@ import com.cupcakecomics.reader.ui.PageTransitionTransformer
 import com.cupcakecomics.reader.ui.PagedSlotAdapter
 import com.cupcakecomics.reader.ui.ZoomablePageView
 import com.nkanaev.comics.R
-import com.nkanaev.comics.fragment.ReaderFragment
 import com.nkanaev.comics.model.Comic
 import com.nkanaev.comics.model.Storage
 import com.nkanaev.comics.parsers.ParserFactory
@@ -462,15 +461,32 @@ class CupcakeReaderFragment : Fragment() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
+    /**
+     * Pre-update pending intents stored the mode as a Serializable enum
+     * (MODE_BROWSER/MODE_LIBRARY/MODE_INTENT) under PARAM_MODE. Read it
+     * without referencing the deleted class so stale alarms still resolve.
+     */
+    private fun legacyMode(args: Bundle): String? =
+        runCatching {
+            when ((args.getSerializable(PARAM_MODE) as? Enum<*>)?.name) {
+                "MODE_BROWSER" -> MODE_FILE
+                "MODE_LIBRARY" -> MODE_LIBRARY
+                "MODE_INTENT" -> MODE_INTENT
+                else -> null
+            }
+        }.getOrNull()
+
     private fun openFromArgs() {
-        val args = arguments ?: return
-        val identity = args.getString(ReaderFragment.PARAM_IDENTITY_KEY)
-            ?: activity?.intent?.getStringExtra(ReaderFragment.PARAM_IDENTITY_KEY)
-        val mode = args.getSerializable(ReaderFragment.PARAM_MODE) as? ReaderFragment.Mode
-            ?: ReaderFragment.Mode.MODE_BROWSER
-        val initialPage = args.getInt(ReaderFragment.PARAM_PAGE, 0)
+        val args = arguments ?: Bundle()
+        val identity = args.getString(PARAM_IDENTITY_KEY)
+            ?: activity?.intent?.getStringExtra(PARAM_IDENTITY_KEY)
+        val mode = args.getString(PARAM_MODE)
+            ?: activity?.intent?.getStringExtra(PARAM_MODE)
+            ?: legacyMode(args)
+            ?: MODE_FILE
+        val initialPage = args.getInt(PARAM_PAGE, 0)
             .takeIf { it > 0 }
-            ?: activity?.intent?.getIntExtra(ReaderFragment.PARAM_PAGE, 0)?.takeIf { it > 0 }
+            ?: activity?.intent?.getIntExtra(PARAM_PAGE, 0)?.takeIf { it > 0 }
             ?: 0
 
         lifecycleScope.launch {
@@ -499,19 +515,13 @@ class CupcakeReaderFragment : Fragment() {
                 val source: PageSource
                 var comic: Comic? = null
                 when (mode) {
-                    ReaderFragment.Mode.MODE_LIBRARY -> {
-                        val id = args.getInt(ReaderFragment.PARAM_HANDLER)
+                    MODE_LIBRARY -> {
+                        val id = args.getInt(PARAM_HANDLER)
                         comic = Storage.getStorage(requireContext()).getComic(id)
                         source = ParserPageSource.fromFile(comic.file)
                     }
-                    ReaderFragment.Mode.MODE_BROWSER -> {
-                        val file = args.getSerializable(ReaderFragment.PARAM_HANDLER) as File
-                        source = ParserPageSource.fromFile(file)
-                        viewModel.open(source, identity, comic, initialPage, file.absolutePath)
-                        return@launch
-                    }
-                    ReaderFragment.Mode.MODE_INTENT -> {
-                        val intent = args.getParcelable(ReaderFragment.PARAM_HANDLER) as? Intent
+                    MODE_INTENT -> {
+                        val intent = args.getParcelable(PARAM_HANDLER) as? Intent
                             ?: activity?.intent
                         val parser = ParserFactory.create(intent)
                             ?: throw IllegalArgumentException("No parser for intent")
@@ -519,6 +529,12 @@ class CupcakeReaderFragment : Fragment() {
                         source = ParserPageSource.fromParser(parser, title)
                         val localPath = intent?.data?.toString()
                         viewModel.open(source, identity, comic, initialPage, localPath)
+                        return@launch
+                    }
+                    else -> {
+                        val file = args.getSerializable(PARAM_HANDLER) as File
+                        source = ParserPageSource.fromFile(file)
+                        viewModel.open(source, identity, comic, initialPage, file.absolutePath)
                         return@launch
                     }
                 }
@@ -1160,15 +1176,25 @@ class CupcakeReaderFragment : Fragment() {
     companion object {
         const val PARAM_SMB_SHARE_ID = "PARAM_SMB_SHARE_ID"
         const val PARAM_SMB_RELATIVE_PATH = "PARAM_SMB_RELATIVE_PATH"
-        const val PARAM_USE_GPU_READER = "PARAM_USE_GPU_READER"
+
+        // Open contract shared with ReaderLauncher. Extra names keep their
+        // historical values so in-flight pending intents still resolve.
+        const val PARAM_MODE = "PARAM_MODE"
+        const val PARAM_HANDLER = "PARAM_HANDLER"
+        const val PARAM_IDENTITY_KEY = "PARAM_IDENTITY_KEY"
+        const val PARAM_PAGE = "PARAM_PAGE"
+
+        const val MODE_FILE = "MODE_FILE"
+        const val MODE_LIBRARY = "MODE_LIBRARY"
+        const val MODE_INTENT = "MODE_INTENT"
 
         @JvmStatic
         fun createLibrary(comicId: Int, identityKey: String? = null): CupcakeReaderFragment {
             return CupcakeReaderFragment().apply {
                 arguments = Bundle().apply {
-                    putSerializable(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_LIBRARY)
-                    putInt(ReaderFragment.PARAM_HANDLER, comicId)
-                    identityKey?.let { putString(ReaderFragment.PARAM_IDENTITY_KEY, it) }
+                    putString(PARAM_MODE, MODE_LIBRARY)
+                    putInt(PARAM_HANDLER, comicId)
+                    identityKey?.let { putString(PARAM_IDENTITY_KEY, it) }
                 }
             }
         }
@@ -1177,9 +1203,9 @@ class CupcakeReaderFragment : Fragment() {
         fun createFile(file: File, identityKey: String? = null): CupcakeReaderFragment {
             return CupcakeReaderFragment().apply {
                 arguments = Bundle().apply {
-                    putSerializable(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-                    putSerializable(ReaderFragment.PARAM_HANDLER, file)
-                    identityKey?.let { putString(ReaderFragment.PARAM_IDENTITY_KEY, it) }
+                    putString(PARAM_MODE, MODE_FILE)
+                    putSerializable(PARAM_HANDLER, file)
+                    identityKey?.let { putString(PARAM_IDENTITY_KEY, it) }
                 }
             }
         }
@@ -1188,8 +1214,8 @@ class CupcakeReaderFragment : Fragment() {
         fun createIntent(intent: Intent): CupcakeReaderFragment {
             return CupcakeReaderFragment().apply {
                 arguments = Bundle().apply {
-                    putSerializable(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_INTENT)
-                    putParcelable(ReaderFragment.PARAM_HANDLER, intent)
+                    putString(PARAM_MODE, MODE_INTENT)
+                    putParcelable(PARAM_HANDLER, intent)
                 }
             }
         }

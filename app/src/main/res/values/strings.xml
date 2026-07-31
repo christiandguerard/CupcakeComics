@@ -17,15 +17,6 @@
 
     <string name="action_view_export">Export page</string>
 
-    <string name="action_view_mode">View Mode</string>
-    <string name="action_view_mode_aspect_fill">Aspect Fill</string>
-    <string name="action_view_mode_aspect_fit">Aspect Fit</string>
-    <string name="action_view_mode_fit_width">Fit Width</string>
-
-    <string name="action_reading_mode">Reading Mode</string>
-    <string name="action_reading_mode_left_to_right">Comics</string>
-    <string name="action_reading_mode_right_to_left">Manga</string>
-
     <string name="menu_browser_filter">Filter</string>
     <string name="menu_browser_filter_all">All</string>
     <string name="menu_browser_filter_read">Read</string>
@@ -239,7 +230,6 @@
     <string name="settings_cache_network_cancel">Cancel</string>
 
     <string name="settings_reading_flow">Reading direction</string>
-    <string name="settings_gpu_reader">Use GPU reader (recommended)</string>
     <string name="settings_crop_borders">Crop page borders by default</string>
     <string name="settings_split_spreads">Split double-page spreads</string>
     <string name="settings_transition_axis">Page turn gestures</string>
@@ -342,8 +332,6 @@
     <string name="alert_action_positive">Yes</string>
     <string name="alert_action_negative">No</string>
     <string name="alert_action_neutral">OK</string>
-    <string name="switch_next_comic">Would you like to switch to the next comic?</string>
-    <string name="switch_prev_comic">Would you like to switch to the previous comic?</string>
 
     <string name="library_empty">Your collection seems empty. Click \"folder\" icon to select library directory.</string>
     <string name="warning_missing_file">Missing file. Please update the library</string>

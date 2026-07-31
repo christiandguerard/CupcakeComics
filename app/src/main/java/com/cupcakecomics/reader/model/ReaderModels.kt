@@ -185,7 +185,6 @@ data class ReaderPreferences(
     val lockRotation: Boolean = false,
     val showThumbnails: Boolean = true,
     val splitSpreads: Boolean = false,
-    val useGpuRenderer: Boolean = true,
     val useLanczos: Boolean = true,
     val lowPowerScaling: Boolean = false,
     val panelMode: Boolean = false,

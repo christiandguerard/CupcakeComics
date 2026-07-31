@@ -1,18 +1,10 @@
 package com.cupcakecomics.ui
 
 import android.content.Context
-import android.content.Intent
-import android.content.SharedPreferences
-import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.view.ActionMode
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.cupcakecomics.cover.FileCoverHandler
@@ -20,11 +12,11 @@ import com.cupcakecomics.data.LibraryRepository
 import com.cupcakecomics.data.LocalFileEntity
 import com.cupcakecomics.data.ReadMarkEntity
 import com.cupcakecomics.data.ReadStatusRepository
+import com.cupcakecomics.reader.ReaderLauncher
 import com.cupcakecomics.settings.CupcakeSettings
+import com.cupcakecomics.smb.ComicFileNames
 import com.nkanaev.comics.R
 import com.nkanaev.comics.activity.MainActivity
-import com.nkanaev.comics.activity.ReaderActivity
-import com.nkanaev.comics.fragment.ReaderFragment
 import com.nkanaev.comics.managers.Utils
 import com.squareup.picasso.Picasso
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +26,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.Serializable
 
 /**
  * Collapsible tiled cover grid for user-imported local files on Library home.
@@ -52,36 +43,73 @@ class LocalFilesLibraryController(
     private val onHasLocal: (Boolean) -> Unit,
 ) {
     private val repo = LibraryRepository(context)
-    private val readStatus = ReadStatusRepository(context)
     private val settings = CupcakeSettings(context)
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("cupcake_library_ui", Context.MODE_PRIVATE)
     private val picasso: Picasso = (context as MainActivity).picasso
-    private val adapter = Adapter(
-        picasso = picasso,
+    private var collectJob: Job? = null
+    private var comics: List<LocalFileEntity> = emptyList()
+    private var readKeys: Set<String> = emptySet()
+
+    private val adapter = CoverTileAdapter<LocalFileEntity>(
+        titleOf = { ComicFileNames.shortDisplayName(it.title) },
+        bindCover = { holder, item ->
+            picasso.load(FileCoverHandler.uriFor(item.localPath)).into(holder.cover)
+        },
+        idOf = { it.id },
+        readKeyOf = { it.sourceKey },
         hideTitles = { settings.hideCoverTitles },
         onClick = { comic ->
-            if (selectionMode) toggle(comic) else open(comic)
+            if (selection.selecting) selection.toggle(comic) else open(comic)
         },
         onLongClick = { comic ->
-            if (!selectionMode) startSelection(comic)
+            if (!selection.selecting) selection.startWith(comic)
             true
         },
     )
-    private var collectJob: Job? = null
-    private var actionMode: ActionMode? = null
-    private var selectionMode = false
-    private val selected = linkedSetOf<Long>()
-    private var comics: List<LocalFileEntity> = emptyList()
-    private var readKeys: Set<String> = emptySet()
-    private var expanded = prefs.getBoolean(PREF_EXPANDED, true)
+
+    private val selection = CoverTileSelectionController(
+        context = context,
+        scope = scope,
+        repo = repo,
+        readStatus = ReadStatusRepository(context),
+        items = { comics },
+        idOf = { it.id },
+        readMarkOf = {
+            ReadMarkEntity(
+                identityKey = it.sourceKey,
+                displayName = it.title,
+                sourceType = "local",
+                sourceDetail = it.localPath,
+                markedReadAt = System.currentTimeMillis(),
+            )
+        },
+        keyOf = { it.sourceKey },
+        deleteToastRes = R.string.deleted_local_toast,
+        onDelete = { picked ->
+            withContext(Dispatchers.IO) {
+                picked.forEach { Utils.deleteCoverCacheFile(it.localPath) }
+            }
+            repo.deleteLocalFiles(picked.map { it.id })
+        },
+        onStateChanged = { submitList() },
+    )
+
+    private val chrome = CollapsibleSectionChrome(
+        context = context,
+        prefs = context.getSharedPreferences("cupcake_library_ui", Context.MODE_PRIVATE),
+        prefKey = PREF_EXPANDED,
+        defaultExpanded = true,
+        headerRow = headerRow,
+        header = header,
+        chevron = chevron,
+        titleRes = R.string.library_local_header,
+        onChanged = { applyExpanded() },
+    )
 
     init {
         refreshSpan()
         list.adapter = adapter
         list.isNestedScrollingEnabled = false
         list.overScrollMode = View.OVER_SCROLL_NEVER
-        headerRow.setOnClickListener { toggleExpanded() }
         addButton.setOnClickListener { onAddClick() }
         // Always show the Local files section so users can add books.
         sectionRoot.visibility = View.VISIBLE
@@ -94,15 +122,15 @@ class LocalFilesLibraryController(
             launch {
                 repo.readMarks.collectLatest { marks ->
                     readKeys = marks.map { it.identityKey }.toSet()
-                    adapter.submit(comics, selected, selectionMode, readKeys)
+                    submitList()
                 }
             }
             repo.localFiles.collectLatest { items ->
                 comics = items
                 onHasLocal(items.isNotEmpty())
                 applyExpanded()
-                adapter.submit(items, selected, selectionMode, readKeys)
-                actionMode?.title = context.getString(R.string.selection_count, selected.size)
+                submitList()
+                selection.syncTitle()
                 launch(Dispatchers.IO) {
                     items.forEach { FileCoverHandler.warmCache(it.localPath) }
                 }
@@ -112,7 +140,7 @@ class LocalFilesLibraryController(
 
     fun stop() {
         collectJob?.cancel()
-        actionMode?.finish()
+        selection.finish()
     }
 
     fun refreshTitlesVisibility() {
@@ -141,24 +169,14 @@ class LocalFilesLibraryController(
         }
     }
 
-    private fun toggleExpanded() {
-        expanded = !expanded
-        prefs.edit().putBoolean(PREF_EXPANDED, expanded).apply()
-        applyExpanded()
+    private fun applyExpanded() {
+        list.visibility =
+            if (comics.isNotEmpty() && chrome.expanded) View.VISIBLE else View.GONE
+        chrome.apply(comics.size)
     }
 
-    private fun applyExpanded() {
-        val showList = comics.isNotEmpty() && expanded
-        list.visibility = if (showList) View.VISIBLE else View.GONE
-        chevron.setImageResource(
-            if (expanded) R.drawable.ic_expand_less_24 else R.drawable.ic_expand_more_24,
-        )
-        val count = comics.size
-        header.text = if (count > 0) {
-            context.getString(R.string.library_local_header) + " ($count)"
-        } else {
-            context.getString(R.string.library_local_header)
-        }
+    private fun submitList() {
+        adapter.submit(comics, selection.selected, selection.selecting, readKeys)
     }
 
     private fun open(comic: LocalFileEntity) {
@@ -168,177 +186,7 @@ class LocalFilesLibraryController(
             scope.launch { repo.deleteLocalFiles(listOf(comic.id)) }
             return
         }
-        val intent = Intent(context, ReaderActivity::class.java)
-        intent.putExtra(ReaderFragment.PARAM_HANDLER, file as Serializable)
-        intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-        intent.putExtra(ReaderFragment.PARAM_IDENTITY_KEY, comic.sourceKey)
-        context.startActivity(intent)
-    }
-
-    private fun startSelection(comic: LocalFileEntity) {
-        selectionMode = true
-        selected.clear()
-        selected.add(comic.id)
-        adapter.submit(comics, selected, true, readKeys)
-        val activity = context as? AppCompatActivity ?: return
-        actionMode = activity.startSupportActionMode(callback)
-        actionMode?.title = context.getString(R.string.selection_count, selected.size)
-    }
-
-    private fun toggle(comic: LocalFileEntity) {
-        if (selected.contains(comic.id)) selected.remove(comic.id) else selected.add(comic.id)
-        adapter.submit(comics, selected, selectionMode, readKeys)
-        actionMode?.title = context.getString(R.string.selection_count, selected.size)
-        if (selected.isEmpty()) actionMode?.finish()
-    }
-
-    private val callback = object : ActionMode.Callback {
-        override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
-            mode.menuInflater.inflate(R.menu.comic_selection, menu)
-            menu.findItem(R.id.action_download_offline)?.isVisible = false
-            return true
-        }
-
-        override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean = false
-
-        override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
-            val picked = comics.filter { it.id in selected }
-            when (item.itemId) {
-                R.id.action_mark_read -> {
-                    scope.launch {
-                        readStatus.markRead(
-                            picked.map {
-                                ReadMarkEntity(
-                                    identityKey = it.sourceKey,
-                                    displayName = it.title,
-                                    sourceType = "local",
-                                    sourceDetail = it.localPath,
-                                    markedReadAt = System.currentTimeMillis(),
-                                )
-                            },
-                        )
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.marked_read_toast, picked.size),
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                    mode.finish()
-                    return true
-                }
-                R.id.action_mark_unread -> {
-                    scope.launch {
-                        readStatus.markUnread(picked.map { it.sourceKey })
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.marked_unread_toast, picked.size),
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                    mode.finish()
-                    return true
-                }
-                R.id.action_delete_offline -> {
-                    scope.launch {
-                        withContext(Dispatchers.IO) {
-                            picked.forEach { Utils.deleteCoverCacheFile(it.localPath) }
-                        }
-                        repo.deleteLocalFiles(picked.map { it.id })
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.deleted_local_toast, picked.size),
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                    mode.finish()
-                    return true
-                }
-                R.id.action_export_read -> {
-                    scope.launch {
-                        val json = repo.exportReadMarksJson()
-                        val share = Intent(Intent.ACTION_SEND).apply {
-                            type = "application/json"
-                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.export_read_share_title))
-                            putExtra(Intent.EXTRA_TEXT, json)
-                        }
-                        context.startActivity(
-                            Intent.createChooser(share, context.getString(R.string.export_read_share_title)),
-                        )
-                    }
-                    return true
-                }
-                R.id.action_select_all -> {
-                    selected.clear()
-                    selected.addAll(comics.map { it.id })
-                    adapter.submit(comics, selected, true, readKeys)
-                    mode.title = context.getString(R.string.selection_count, selected.size)
-                    return true
-                }
-            }
-            return false
-        }
-
-        override fun onDestroyActionMode(mode: ActionMode) {
-            selectionMode = false
-            selected.clear()
-            actionMode = null
-            adapter.submit(comics, selected, false, readKeys)
-        }
-    }
-
-    private class Adapter(
-        private val picasso: Picasso,
-        private val hideTitles: () -> Boolean,
-        private val onClick: (LocalFileEntity) -> Unit,
-        private val onLongClick: (LocalFileEntity) -> Boolean,
-    ) : RecyclerView.Adapter<Adapter.VH>() {
-        private var items: List<LocalFileEntity> = emptyList()
-        private var selected: Set<Long> = emptySet()
-        private var selecting = false
-        private var readKeys: Set<String> = emptySet()
-
-        fun submit(
-            next: List<LocalFileEntity>,
-            sel: Set<Long>,
-            selecting: Boolean,
-            readKeys: Set<String>,
-        ) {
-            items = next
-            selected = sel.toSet()
-            this.selecting = selecting
-            this.readKeys = readKeys
-            notifyDataSetChanged()
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_offline_cover_tile, parent, false)
-            return VH(view)
-        }
-
-        override fun onBindViewHolder(holder: VH, position: Int) {
-            val item = items[position]
-            val hide = hideTitles()
-            val displayTitle = if (hide) "" else {
-                val title = Utils.removeExtensionIfAny(item.title)
-                val read = if (item.sourceKey in readKeys) " · Read" else ""
-                title + read
-            }
-            holder.title.text = displayTitle
-            holder.title.visibility = if (displayTitle.isBlank()) View.GONE else View.VISIBLE
-            picasso.load(FileCoverHandler.uriFor(item.localPath)).into(holder.cover)
-            holder.selected.visibility = if (selecting && item.id in selected) View.VISIBLE else View.GONE
-            holder.itemView.setOnClickListener { onClick(item) }
-            holder.itemView.setOnLongClickListener { onLongClick(item) }
-        }
-
-        override fun getItemCount(): Int = items.size
-
-        class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val cover: ImageView = view.findViewById(R.id.offline_cover)
-            val title: TextView = view.findViewById(R.id.offline_title)
-            val selected: View = view.findViewById(R.id.offline_selected)
-        }
+        ReaderLauncher.openFile(context, file, identityKey = comic.sourceKey)
     }
 
     companion object {
