@@ -62,7 +62,6 @@ class ReaderSettingsStore(context: Context) {
         lockRotation = prefs.getBoolean(KEY_LOCK_ROTATION, false),
         showThumbnails = prefs.getBoolean(KEY_SHOW_THUMBS, true),
         splitSpreads = prefs.getBoolean(KEY_SPLIT_SPREADS, false),
-        useGpuRenderer = prefs.getBoolean(KEY_GPU, true),
         useLanczos = prefs.getBoolean(KEY_LANCZOS, true),
         lowPowerScaling = prefs.getBoolean(KEY_LOW_POWER, false),
     )
@@ -94,24 +93,9 @@ class ReaderSettingsStore(context: Context) {
             .putBoolean(KEY_LOCK_ROTATION, prefsModel.lockRotation)
             .putBoolean(KEY_SHOW_THUMBS, prefsModel.showThumbnails)
             .putBoolean(KEY_SPLIT_SPREADS, prefsModel.splitSpreads)
-            .putBoolean(KEY_GPU, prefsModel.useGpuRenderer)
             .putBoolean(KEY_LANCZOS, prefsModel.useLanczos)
             .putBoolean(KEY_LOW_POWER, prefsModel.lowPowerScaling)
             .apply()
-
-        // Keep Bubble2 keys in sync for legacy reader path.
-        val legacy = MainApplication.getPreferences().edit()
-        legacy.putBoolean(
-            Constants.SETTINGS_READING_LEFT_TO_RIGHT,
-            prefsModel.readingFlow != ReadingFlow.RIGHT_TO_LEFT,
-        )
-        val viewMode = when (prefsModel.fit.portraitScreenPortraitPage) {
-            FitMode.FIT_WIDTH -> Constants.PageViewMode.FIT_WIDTH.native_int
-            FitMode.FULL_SIZE -> Constants.PageViewMode.ASPECT_FILL.native_int
-            else -> Constants.PageViewMode.ASPECT_FIT.native_int
-        }
-        legacy.putInt(Constants.SETTINGS_PAGE_VIEW_MODE, viewMode)
-        legacy.apply()
     }
 
     fun loadForBook(identityKey: String?): ReaderPreferences {
@@ -237,7 +221,6 @@ class ReaderSettingsStore(context: Context) {
         private const val KEY_LOCK_ROTATION = "lock_rotation"
         private const val KEY_SHOW_THUMBS = "show_thumbs"
         private const val KEY_SPLIT_SPREADS = "split_spreads"
-        private const val KEY_GPU = "gpu"
         private const val KEY_LANCZOS = "lanczos"
         private const val KEY_LOW_POWER = "low_power"
 
