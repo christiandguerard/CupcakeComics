@@ -12,15 +12,6 @@
 
     <string name="action_view_export">Exportar página</string>
 
-    <string name="action_view_mode">Modo de visualização</string>
-    <string name="action_view_mode_aspect_fill">Preenchimento de aspecto</string>
-    <string name="action_view_mode_aspect_fit">Ajuste de aspecto</string>
-    <string name="action_view_mode_fit_width">Ajuste de largura</string>
-
-    <string name="action_reading_mode">Modo de leitura</string>
-    <string name="action_reading_mode_left_to_right">Quadrinho</string>
-    <string name="action_reading_mode_right_to_left">Mangá</string>
-
     <string name="menu_browser_filter">Filtrar</string>
     <string name="menu_browser_filter_all">Todos</string>
     <string name="menu_browser_filter_read">Lido</string>
@@ -70,8 +61,6 @@
     <string name="alert_action_positive">Sim</string>
     <string name="alert_action_negative">Não</string>
     <string name="alert_action_neutral">Ok</string>
-    <string name="switch_next_comic">Você gostaria de mudar para o próximo quadrinho?</string>
-    <string name="switch_prev_comic">Você gostaria de mudar para o quadrinho anterior?</string>
 
     <string name="library_empty">Sua coleção parece vazia. Clique no ícone \"pasta\" para selecionar o diretório da biblioteca.</string>
     <string name="warning_missing_file">Arquivo ausente. Por favor, atualize a biblioteca</string>

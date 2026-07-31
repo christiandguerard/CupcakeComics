@@ -589,7 +589,7 @@ public class ParserFactory {
                 pageData.put(Parser.PAGEMETADATA_KEY_HEIGHT, source.getHeight());
                 mPagesMetaData.put(Integer.valueOf(num), pageData);
 
-                // mDblTapScale in PageImageView is 1.5 currently, so set this as our limit
+                // Cap decode size to the largest screen edge.
                 DisplayMetrics displayMetrics = MainApplication.getAppContext().getResources().getDisplayMetrics();
                 int max = Math.round(1.0f * Math.max(displayMetrics.widthPixels, displayMetrics.heightPixels));
                 BitmapFactory.Options options = new BitmapFactory.Options();

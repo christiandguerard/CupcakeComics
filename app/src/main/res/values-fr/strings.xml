@@ -12,15 +12,6 @@
 
     <string name="action_view_export">Exporter la page</string>
 
-    <string name="action_view_mode">Vue</string>
-    <string name="action_view_mode_aspect_fill">Remplissage</string>
-    <string name="action_view_mode_aspect_fit">Adaptée</string>
-    <string name="action_view_mode_fit_width">Largeur adaptée</string>
-
-    <string name="action_reading_mode">Mode de lecture</string>
-    <string name="action_reading_mode_left_to_right">BD</string>
-    <string name="action_reading_mode_right_to_left">Manga</string>
-
     <string name="menu_browser_filter">Filtrer</string>
     <string name="menu_browser_filter_all">Tout</string>
     <string name="menu_browser_filter_read">Lu</string>
@@ -69,9 +60,6 @@
     <string name="alert_action_positive">Oui</string>
     <string name="alert_action_negative">Non</string>
     <string name="alert_action_neutral">OK</string>
-
-    <string name="switch_next_comic">Passer à la BD suivante ?</string>
-    <string name="switch_prev_comic">Revenir à la BD précédente ?</string>
 
     <string name="library_empty">Votre collection semble vide. Cliquez sur l’icône « dossier » pour sélectionner un répertoire.</string>
     <string name="warning_missing_file">Fichier manquant. Veuillez mettre à jour la bibliothèque.</string>
