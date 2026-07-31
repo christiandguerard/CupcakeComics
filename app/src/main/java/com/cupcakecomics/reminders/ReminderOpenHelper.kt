@@ -6,12 +6,9 @@ import android.net.Uri
 import com.cupcakecomics.data.ReminderBookSource
 import com.cupcakecomics.data.ReminderEntity
 import com.cupcakecomics.data.pullIdentityKey
-import com.cupcakecomics.reader.CupcakeReaderFragment
+import com.cupcakecomics.reader.ReaderLauncher
 import com.nkanaev.comics.activity.MainActivity
-import com.nkanaev.comics.activity.ReaderActivity
-import com.nkanaev.comics.fragment.ReaderFragment
 import java.io.File
-import java.io.Serializable
 
 /** Builds intents that open the Pull List or a specific book page from reminders. */
 object ReminderOpenHelper {
@@ -24,10 +21,11 @@ object ReminderOpenHelper {
         }
 
     fun readerIntent(context: Context, reminder: ReminderEntity, page: Int): Intent? {
+        val safePage = page.coerceAtLeast(1)
         val base = when (reminder.bookSource) {
-            ReminderBookSource.LIBRARY -> libraryIntent(context, reminder, page)
-            ReminderBookSource.PULL -> pullIntent(context, reminder, page)
-            ReminderBookSource.LOCAL -> localIntent(context, reminder, page)
+            ReminderBookSource.LIBRARY -> libraryIntent(context, reminder, safePage)
+            ReminderBookSource.PULL -> pullIntent(context, reminder, safePage)
+            ReminderBookSource.LOCAL -> localIntent(context, reminder, safePage)
             null -> null
         } ?: return null
         base.putExtra(EXTRA_REMINDER_ID, reminder.id)
@@ -36,13 +34,12 @@ object ReminderOpenHelper {
 
     private fun libraryIntent(context: Context, reminder: ReminderEntity, page: Int): Intent? {
         if (reminder.libraryComicId <= 0) return null
-        return Intent(context, ReaderActivity::class.java).apply {
-            putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_LIBRARY)
-            putExtra(ReaderFragment.PARAM_HANDLER, reminder.libraryComicId)
-            reminder.identityKey?.let { putExtra(ReaderFragment.PARAM_IDENTITY_KEY, it) }
-            putExtra(ReaderFragment.PARAM_PAGE, page.coerceAtLeast(1))
-            putExtra(CupcakeReaderFragment.PARAM_USE_GPU_READER, true)
-        }
+        return ReaderLauncher.libraryComicIntent(
+            context,
+            comicId = reminder.libraryComicId,
+            identityKey = reminder.identityKey,
+            initialPage = page,
+        )
     }
 
     private fun pullIntent(context: Context, reminder: ReminderEntity, page: Int): Intent? {
@@ -55,38 +52,34 @@ object ReminderOpenHelper {
             ?: return null
         val identity = reminder.identityKey ?: pullIdentityKey(shareId, rel)
         val title = reminder.title.ifBlank { rel.substringAfterLast('/') }
-        return Intent(context, ReaderActivity::class.java).apply {
-            putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-            putExtra(ReaderFragment.PARAM_HANDLER, File(title) as Serializable)
-            putExtra(ReaderFragment.PARAM_IDENTITY_KEY, identity)
-            putExtra(CupcakeReaderFragment.PARAM_SMB_SHARE_ID, shareId)
-            putExtra(CupcakeReaderFragment.PARAM_SMB_RELATIVE_PATH, rel)
-            putExtra(ReaderFragment.PARAM_PAGE, page.coerceAtLeast(1))
-            putExtra(CupcakeReaderFragment.PARAM_USE_GPU_READER, true)
-        }
+        return ReaderLauncher.smbIntent(
+            context,
+            shareId = shareId,
+            relativePath = rel,
+            displayName = title,
+            identityKey = identity,
+            initialPage = page,
+        )
     }
 
     private fun localIntent(context: Context, reminder: ReminderEntity, page: Int): Intent? {
         val path = reminder.localPath?.takeIf { it.isNotBlank() } ?: return null
         if (path.startsWith("content://")) {
-            val viewIntent = Intent(Intent.ACTION_VIEW, Uri.parse(path))
-            return Intent(context, ReaderActivity::class.java).apply {
-                putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_INTENT)
-                putExtra(ReaderFragment.PARAM_HANDLER, viewIntent)
-                reminder.identityKey?.let { putExtra(ReaderFragment.PARAM_IDENTITY_KEY, it) }
-                putExtra(ReaderFragment.PARAM_PAGE, page.coerceAtLeast(1))
-                putExtra(CupcakeReaderFragment.PARAM_USE_GPU_READER, true)
-            }
+            return ReaderLauncher.viewIntentIntent(
+                context,
+                viewIntent = Intent(Intent.ACTION_VIEW, Uri.parse(path)),
+                identityKey = reminder.identityKey,
+                initialPage = page,
+            )
         }
         val file = File(path)
         if (!file.isFile) return null
-        return Intent(context, ReaderActivity::class.java).apply {
-            putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-            putExtra(ReaderFragment.PARAM_HANDLER, file as Serializable)
-            reminder.identityKey?.let { putExtra(ReaderFragment.PARAM_IDENTITY_KEY, it) }
-            putExtra(ReaderFragment.PARAM_PAGE, page.coerceAtLeast(1))
-            putExtra(CupcakeReaderFragment.PARAM_USE_GPU_READER, true)
-        }
+        return ReaderLauncher.fileIntent(
+            context,
+            file = file,
+            identityKey = reminder.identityKey,
+            initialPage = page,
+        )
     }
 
     private fun parseShareId(identityKey: String?): Long? {

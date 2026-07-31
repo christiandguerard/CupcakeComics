@@ -28,14 +28,13 @@ import com.cupcakecomics.data.LibraryRepository
 import com.cupcakecomics.data.ReadMarkEntity
 import com.cupcakecomics.data.ReadStatusRepository
 import com.cupcakecomics.data.SmbShareEntity
+import com.cupcakecomics.reader.ReaderLauncher
 import com.cupcakecomics.smb.ComicFileNames
 import com.cupcakecomics.smb.SmbBrowser
 import com.cupcakecomics.smb.SmbListEntry
 import com.cupcakecomics.smb.SmbStageManager
 import com.nkanaev.comics.R
 import com.nkanaev.comics.activity.MainActivity
-import com.nkanaev.comics.activity.ReaderActivity
-import com.nkanaev.comics.fragment.ReaderFragment
 import com.nkanaev.comics.managers.Utils
 import com.squareup.picasso.Picasso
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +42,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.Serializable
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -451,25 +449,18 @@ class SmbBrowseFragment : Fragment() {
 
     private fun downloadAndOpen(entry: SmbListEntry) {
         val s = share ?: return
-        val useGpu = try {
-            com.cupcakecomics.reader.settings.ReaderSettingsStore(requireContext())
-                .loadDefaults().useGpuRenderer
-        } catch (_: Throwable) {
-            true
-        }
         val preferStream = com.cupcakecomics.settings.CupcakeSettings(requireContext()).preferSmbStreaming
-        // CBZ/ZIP streaming only works with the GPU reader (SMB range source).
-        if (preferStream && useGpu &&
+        // CBZ/ZIP can stream straight from the share via SMB range requests.
+        if (preferStream &&
             com.cupcakecomics.reader.source.ZipRangePageSource.isZipName(entry.name)
         ) {
-            val intent = Intent(requireActivity(), ReaderActivity::class.java)
-            intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-            intent.putExtra(ReaderFragment.PARAM_IDENTITY_KEY, identityKey(entry.relativePath))
-            intent.putExtra(com.cupcakecomics.reader.CupcakeReaderFragment.PARAM_SMB_SHARE_ID, s.id)
-            intent.putExtra(com.cupcakecomics.reader.CupcakeReaderFragment.PARAM_SMB_RELATIVE_PATH, entry.relativePath)
-            // Dummy handler for legacy extras contract (GPU path remaps via PARAM_SMB_*).
-            intent.putExtra(ReaderFragment.PARAM_HANDLER, File(entry.name) as Serializable)
-            startActivity(intent)
+            ReaderLauncher.openSmb(
+                requireContext(),
+                shareId = s.id,
+                relativePath = entry.relativePath,
+                displayName = entry.name,
+                identityKey = identityKey(entry.relativePath),
+            )
             return
         }
         // Stage into capped smb-stage cache for open-to-read.
@@ -565,13 +556,7 @@ class SmbBrowseFragment : Fragment() {
     }
 
     private fun openLocalComic(file: File, identityKey: String? = null) {
-        val intent = Intent(requireActivity(), ReaderActivity::class.java)
-        intent.putExtra(ReaderFragment.PARAM_HANDLER, file as Serializable)
-        intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-        if (!identityKey.isNullOrBlank()) {
-            intent.putExtra(ReaderFragment.PARAM_IDENTITY_KEY, identityKey)
-        }
-        startActivity(intent)
+        ReaderLauncher.openFile(requireContext(), file, identityKey = identityKey)
     }
 
     private class EntryAdapter(

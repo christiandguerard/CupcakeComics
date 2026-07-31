@@ -28,12 +28,11 @@ import com.cupcakecomics.data.LibraryRepository
 import com.cupcakecomics.data.OfflineComicEntity
 import com.cupcakecomics.data.ReadMarkEntity
 import com.cupcakecomics.data.ReadStatusRepository
+import com.cupcakecomics.reader.ReaderLauncher
 import com.cupcakecomics.settings.CupcakeSettings
 import com.cupcakecomics.smb.ComicFileNames
 import com.nkanaev.comics.R
 import com.nkanaev.comics.activity.MainActivity
-import com.nkanaev.comics.activity.ReaderActivity
-import com.nkanaev.comics.fragment.ReaderFragment
 import com.nkanaev.comics.managers.Utils
 import com.nkanaev.comics.view.CoverImageView
 import com.squareup.picasso.Picasso
@@ -44,7 +43,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.Serializable
 
 /**
  * Collapsible tiled cover grid for offline downloads on Library home.
@@ -319,13 +317,11 @@ class OfflineLibraryController(
             scope.launch { repo.deleteOffline(listOf(comic.id)) }
             return
         }
-        val intent = Intent(context, ReaderActivity::class.java)
-        intent.putExtra(ReaderFragment.PARAM_HANDLER, file as Serializable)
-        intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-        if (comic.sourceKey.isNotBlank()) {
-            intent.putExtra(ReaderFragment.PARAM_IDENTITY_KEY, comic.sourceKey)
-        }
-        context.startActivity(intent)
+        ReaderLauncher.openFile(
+            context,
+            file,
+            identityKey = comic.sourceKey.takeIf { it.isNotBlank() },
+        )
     }
 
     private fun startSelection(comic: OfflineComicEntity) {

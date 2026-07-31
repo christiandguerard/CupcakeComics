@@ -2,7 +2,6 @@ package com.nkanaev.comics.fragment;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Rect;
@@ -35,12 +34,12 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import com.cupcakecomics.reader.ReaderLauncher;
 import com.nkanaev.comics.BuildConfig;
 import com.nkanaev.comics.Constants;
 import com.nkanaev.comics.MainApplication;
 import com.nkanaev.comics.R;
 import com.nkanaev.comics.activity.MainActivity;
-import com.nkanaev.comics.activity.ReaderActivity;
 import com.nkanaev.comics.managers.IgnoreCaseComparator;
 import com.nkanaev.comics.managers.LocalCoverHandler;
 import com.nkanaev.comics.managers.Scanner;
@@ -473,10 +472,7 @@ public class LibraryBrowserFragment extends Fragment
             return;
         }
 
-        Intent intent = new Intent(getActivity(), ReaderActivity.class);
-        intent.putExtra(ReaderFragment.PARAM_HANDLER, comic.getId());
-        intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_LIBRARY);
-        startActivity(intent);
+        ReaderLauncher.openLibraryComic(requireContext(), comic.getId(), null, 0);
         Utils.disablePendingTransition(getActivity());
     }
 

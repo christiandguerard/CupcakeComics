@@ -1,6 +1,5 @@
 package com.cupcakecomics.ui
 
-import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.text.format.Formatter
@@ -27,12 +26,11 @@ import com.cupcakecomics.pulllist.PullEstimateRepository
 import com.cupcakecomics.pulllist.PullListRepository
 import com.cupcakecomics.pulllist.PullListWorker
 import com.cupcakecomics.pulllist.SeriesEstimate
+import com.cupcakecomics.reader.ReaderLauncher
 import com.cupcakecomics.smb.SmbStageManager
 import com.google.android.material.tabs.TabLayout
 import com.nkanaev.comics.R
 import com.nkanaev.comics.activity.MainActivity
-import com.nkanaev.comics.activity.ReaderActivity
-import com.nkanaev.comics.fragment.ReaderFragment
 import com.nkanaev.comics.managers.Utils
 import com.nkanaev.comics.view.CoverImageView
 import com.squareup.picasso.Picasso
@@ -42,7 +40,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.Serializable
 
 class PullListFragment : Fragment() {
     private lateinit var repo: PullListRepository
@@ -229,26 +226,17 @@ class PullListFragment : Fragment() {
                 Toast.makeText(requireContext(), R.string.smb_share_missing, Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            val useGpu = try {
-                com.cupcakecomics.reader.settings.ReaderSettingsStore(requireContext())
-                    .loadDefaults().useGpuRenderer
-            } catch (_: Throwable) {
-                true
-            }
             val preferStream = com.cupcakecomics.settings.CupcakeSettings(requireContext()).preferSmbStreaming
             val isZip = com.cupcakecomics.reader.source.ZipRangePageSource.isZipName(item.title) ||
                 com.cupcakecomics.reader.source.ZipRangePageSource.isZipName(item.relativePath)
-            if (preferStream && useGpu && isZip) {
-                val intent = Intent(requireActivity(), ReaderActivity::class.java)
-                intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-                intent.putExtra(ReaderFragment.PARAM_IDENTITY_KEY, item.identityKey)
-                intent.putExtra(com.cupcakecomics.reader.CupcakeReaderFragment.PARAM_SMB_SHARE_ID, share.id)
-                intent.putExtra(
-                    com.cupcakecomics.reader.CupcakeReaderFragment.PARAM_SMB_RELATIVE_PATH,
-                    item.relativePath,
+            if (preferStream && isZip) {
+                ReaderLauncher.openSmb(
+                    requireContext(),
+                    shareId = share.id,
+                    relativePath = item.relativePath,
+                    displayName = item.title,
+                    identityKey = item.identityKey,
                 )
-                intent.putExtra(ReaderFragment.PARAM_HANDLER, File(item.title) as Serializable)
-                startActivity(intent)
                 return@launch
             }
             val dialogView = layoutInflater.inflate(R.layout.dialog_download_progress, null)
@@ -280,11 +268,7 @@ class PullListFragment : Fragment() {
             }
             if (isAdded) progress.dismiss()
             result.onSuccess { file ->
-                val intent = Intent(requireActivity(), ReaderActivity::class.java)
-                intent.putExtra(ReaderFragment.PARAM_HANDLER, file as Serializable)
-                intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-                intent.putExtra(ReaderFragment.PARAM_IDENTITY_KEY, item.identityKey)
-                startActivity(intent)
+                ReaderLauncher.openFile(requireContext(), file, identityKey = item.identityKey)
             }.onFailure { err ->
                 Toast.makeText(
                     requireContext(),

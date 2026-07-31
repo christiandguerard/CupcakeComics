@@ -109,8 +109,7 @@ class ParserPageSource(
 
         @JvmStatic
         fun fromUri(uri: Uri, intentType: String? = null): ParserPageSource {
-            // Intent path uses ParserFactory.create(Intent) via ReaderFragment historically;
-            // for URI-only opens, stage through temp file is handled upstream.
+            // URI opens go through ParserFactory.create(Intent) upstream.
             throw UnsupportedOperationException("Use fromParser with an Intent-created Parser")
         }
 

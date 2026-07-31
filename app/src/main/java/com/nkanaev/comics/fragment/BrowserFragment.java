@@ -1,6 +1,5 @@
 package com.nkanaev.comics.fragment;
 
-import android.content.Intent;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Environment;
@@ -13,9 +12,9 @@ import android.view.ViewGroup;
 import android.widget.*;
 import androidx.fragment.app.Fragment;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import com.cupcakecomics.reader.ReaderLauncher;
 import com.nkanaev.comics.R;
 import com.nkanaev.comics.activity.MainActivity;
-import com.nkanaev.comics.activity.ReaderActivity;
 import com.nkanaev.comics.managers.IgnoreCaseComparator;
 import com.nkanaev.comics.managers.Utils;
 import com.nkanaev.comics.parsers.Parser;
@@ -173,10 +172,7 @@ public class BrowserFragment extends Fragment
             return;
         }
 
-        Intent intent = new Intent(getActivity(), ReaderActivity.class);
-        intent.putExtra(ReaderFragment.PARAM_HANDLER, file);
-        intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER);
-        startActivity(intent);
+        ReaderLauncher.openFile(requireContext(), file, null, 0);
     }
 
     @Override
@@ -195,10 +191,7 @@ public class BrowserFragment extends Fragment
             return true;
         }
 
-        Intent intent = new Intent(getActivity(), ReaderActivity.class);
-        intent.putExtra(ReaderFragment.PARAM_HANDLER, file);
-        intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER);
-        startActivity(intent);
+        ReaderLauncher.openFile(requireContext(), file, null, 0);
         return true;
     }
 

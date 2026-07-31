@@ -20,11 +20,10 @@ import com.cupcakecomics.data.LibraryRepository
 import com.cupcakecomics.data.LocalFileEntity
 import com.cupcakecomics.data.ReadMarkEntity
 import com.cupcakecomics.data.ReadStatusRepository
+import com.cupcakecomics.reader.ReaderLauncher
 import com.cupcakecomics.settings.CupcakeSettings
 import com.nkanaev.comics.R
 import com.nkanaev.comics.activity.MainActivity
-import com.nkanaev.comics.activity.ReaderActivity
-import com.nkanaev.comics.fragment.ReaderFragment
 import com.nkanaev.comics.managers.Utils
 import com.squareup.picasso.Picasso
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +33,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.Serializable
 
 /**
  * Collapsible tiled cover grid for user-imported local files on Library home.
@@ -168,11 +166,7 @@ class LocalFilesLibraryController(
             scope.launch { repo.deleteLocalFiles(listOf(comic.id)) }
             return
         }
-        val intent = Intent(context, ReaderActivity::class.java)
-        intent.putExtra(ReaderFragment.PARAM_HANDLER, file as Serializable)
-        intent.putExtra(ReaderFragment.PARAM_MODE, ReaderFragment.Mode.MODE_BROWSER)
-        intent.putExtra(ReaderFragment.PARAM_IDENTITY_KEY, comic.sourceKey)
-        context.startActivity(intent)
+        ReaderLauncher.openFile(context, file, identityKey = comic.sourceKey)
     }
 
     private fun startSelection(comic: LocalFileEntity) {
