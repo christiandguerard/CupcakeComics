@@ -15,8 +15,9 @@ import androidx.room.RoomDatabase
         PullComicEntity::class,
         ReminderEntity::class,
         LocalFileEntity::class,
+        DailyReadingProgressEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @androidx.room.TypeConverters(ReminderConverters::class)
@@ -29,6 +30,7 @@ abstract class CupcakeDatabase : RoomDatabase() {
     abstract fun pullComicDao(): PullComicDao
     abstract fun reminderDao(): ReminderDao
     abstract fun localFileDao(): LocalFileDao
+    abstract fun dailyReadingProgressDao(): DailyReadingProgressDao
 
     companion object {
         @Volatile private var instance: CupcakeDatabase? = null
@@ -36,15 +38,16 @@ abstract class CupcakeDatabase : RoomDatabase() {
         fun get(context: Context): CupcakeDatabase {
             return instance ?: synchronized(this) {
                 instance ?: run {
-                    val builder = Room.databaseBuilder(
+                    // No fallbackToDestructiveMigration: a missing migration must fail
+                    // loudly in development rather than wipe beta users' data.
+                    Room.databaseBuilder(
                         context.applicationContext,
                         CupcakeDatabase::class.java,
                         "cupcake.db",
                     )
-                    if (com.nkanaev.comics.BuildConfig.DEBUG) {
-                        builder.fallbackToDestructiveMigration()
-                    }
-                    builder.build().also { instance = it }
+                        .addMigrations(*CupcakeMigrations.ALL)
+                        .build()
+                        .also { instance = it }
                 }
             }
         }
