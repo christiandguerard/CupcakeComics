@@ -105,6 +105,37 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"/>
 
+            <CheckBox
+                    android:id="@+id/reminder_edit_notify"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/reminders_notify_enabled"
+                    android:checked="true"/>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/reminders_daily_goal"
+                    android:textStyle="bold"/>
+
+            <EditText
+                    android:id="@+id/reminder_edit_goal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:inputType="number"
+                    android:maxLength="3"
+                    android:hint="0"/>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/reminders_daily_goal_hint"
+                    android:textSize="12sp"/>
+
             <TextView
                     android:id="@+id/reminder_edit_book_label"
                     android:layout_width="match_parent"

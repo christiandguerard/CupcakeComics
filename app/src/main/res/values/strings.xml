@@ -455,6 +455,10 @@
     <string name="reminders_schedule_weekly">Weekly on %1$s at %2$s</string>
     <string name="reminders_schedule_monthly">Monthly on day %1$d at %2$s</string>
     <string name="reminders_no_book">No book selected</string>
+    <string name="reminders_daily_goal">Pages per day goal</string>
+    <string name="reminders_daily_goal_hint">0 = off. Set 2 or more to get a small banner once you hit your daily goal.</string>
+    <string name="reminders_notify_enabled">Status-bar notification</string>
+    <string name="reminders_notify_off">notification off</string>
     <string name="reader_daily_goal_met">Daily goal met — %1$d pages of %2$s today</string>
 
     <string name="book_picker_title">Pick a book</string>

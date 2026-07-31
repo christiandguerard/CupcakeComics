@@ -8,6 +8,7 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -40,6 +41,8 @@ class ReminderEditFragment : Fragment() {
     private lateinit var dayOfMonthSpinner: Spinner
     private lateinit var bookSection: View
     private lateinit var pageModeSpinner: Spinner
+    private lateinit var notifyBox: CheckBox
+    private lateinit var goalInput: EditText
     private lateinit var bookLabel: TextView
     private lateinit var deleteButton: Button
 
@@ -85,6 +88,8 @@ class ReminderEditFragment : Fragment() {
         dayOfMonthSpinner = view.findViewById(R.id.reminder_edit_day_of_month)
         bookSection = view.findViewById(R.id.reminder_edit_book_section)
         pageModeSpinner = view.findViewById(R.id.reminder_edit_page_mode)
+        notifyBox = view.findViewById(R.id.reminder_edit_notify)
+        goalInput = view.findViewById(R.id.reminder_edit_goal)
         bookLabel = view.findViewById(R.id.reminder_edit_book_label)
         deleteButton = view.findViewById(R.id.reminder_edit_delete)
 
@@ -101,6 +106,7 @@ class ReminderEditFragment : Fragment() {
         )
 
         frequencySpinner.onItemSelectedListener = simpleListener { updateFrequencyRows() }
+        pageModeSpinner.onItemSelectedListener = simpleListener { updateNotifyAvailability() }
         view.findViewById<Button>(R.id.reminder_edit_pick_book).setOnClickListener {
             (activity as MainActivity).pushFragment(BookPickerFragment())
         }
@@ -120,7 +126,10 @@ class ReminderEditFragment : Fragment() {
         dayOfWeekSpinner.setSelection((entity.dayOfWeek - 1).coerceIn(0, 6))
         dayOfMonthSpinner.setSelection((entity.dayOfMonth - 1).coerceIn(0, 27))
         pageModeSpinner.setSelection(if (entity.pageMode == ReminderPageMode.RESUME) 0 else 1)
+        notifyBox.isChecked = entity.notifyEnabled
+        goalInput.setText(entity.dailyPageGoal.coerceAtLeast(0).toString())
         bindingSpinners = false
+        updateNotifyAvailability()
 
         bookSection.visibility = if (entity.type == ReminderType.BOOK) View.VISIBLE else View.GONE
         deleteButton.visibility = if (entity.id > 0L) View.VISIBLE else View.GONE
@@ -149,6 +158,13 @@ class ReminderEditFragment : Fragment() {
         }
     }
 
+    private fun updateNotifyAvailability() {
+        // Page-a-day advances on each fire, so its notification cannot be turned off.
+        val pageADay = pageModeSpinner.selectedItemPosition == 1
+        notifyBox.isEnabled = !pageADay
+        if (pageADay) notifyBox.isChecked = true
+    }
+
     private fun refreshBookLabel() {
         val pick = pickedBook
         bookLabel.text = pick?.displayTitle ?: getString(R.string.reminders_no_book)
@@ -166,6 +182,7 @@ class ReminderEditFragment : Fragment() {
         } else {
             ReminderPageMode.PAGE_A_DAY
         }
+        val goal = goalInput.text.toString().trim().toIntOrNull()?.coerceIn(0, 999) ?: 0
         val entity = base.copy(
             enabled = enabledBox.isChecked,
             frequency = ReminderFrequency.entries[frequencySpinner.selectedItemPosition],
@@ -173,6 +190,8 @@ class ReminderEditFragment : Fragment() {
             dayOfWeek = dayOfWeekSpinner.selectedItemPosition + CalendarCompat.SUNDAY,
             dayOfMonth = dayOfMonthSpinner.selectedItemPosition + 1,
             pageMode = pageMode,
+            dailyPageGoal = goal,
+            notifyEnabled = notifyBox.isChecked || pageMode == ReminderPageMode.PAGE_A_DAY,
             title = pick?.displayTitle ?: base.title,
             bookSource = pick?.source ?: base.bookSource,
             identityKey = pick?.identityKey,

@@ -29,7 +29,7 @@ class ReminderRepository(context: Context) {
 
     suspend fun save(entity: ReminderEntity): Long {
         val withSchedule = entity.copy(
-            nextFireAt = if (entity.enabled) computeNextFor(entity) else 0L,
+            nextFireAt = if (entity.enabled && entity.effectiveNotify()) computeNextFor(entity) else 0L,
         )
         val rowId = dao.upsert(withSchedule)
         ReminderScheduler.schedule(app)
@@ -45,7 +45,7 @@ class ReminderRepository(context: Context) {
         val existing = dao.getById(id) ?: return
         val updated = existing.copy(
             enabled = enabled,
-            nextFireAt = if (enabled) computeNextFor(existing) else 0L,
+            nextFireAt = if (enabled && existing.effectiveNotify()) computeNextFor(existing) else 0L,
         )
         dao.update(updated)
         ReminderScheduler.schedule(app)
@@ -63,7 +63,7 @@ class ReminderRepository(context: Context) {
         val updated = entity.copy(
             lastFiredAt = now,
             enabled = !disabled && entity.enabled,
-            nextFireAt = if (!disabled && entity.enabled) {
+            nextFireAt = if (!disabled && entity.enabled && entity.effectiveNotify()) {
                 ReminderSchedule.computeNextFire(
                     afterMillis = now,
                     frequency = entity.frequency,
