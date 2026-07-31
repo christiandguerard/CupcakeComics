@@ -291,6 +291,7 @@ public class LibraryFragment extends Fragment
         View offlineHeaderRow = view.findViewById(R.id.library_offline_header_row);
         TextView offlineHeader = view.findViewById(R.id.library_offline_header);
         ImageView offlineChevron = view.findViewById(R.id.library_offline_chevron);
+        FrameLayout offlineStack = view.findViewById(R.id.library_offline_stack);
         RecyclerView offlineList = view.findViewById(R.id.library_offline_list);
         mOfflineLibraryController = new OfflineLibraryController(
                 requireContext(),
@@ -299,6 +300,7 @@ public class LibraryFragment extends Fragment
                 offlineHeader,
                 offlineChevron,
                 offlineList,
+                offlineStack,
                 hasOffline -> {
                     mHasOfflineComics = hasOffline;
                     showEmptyMessageIfNeeded();

@@ -1,14 +1,22 @@
 package com.cupcakecomics.ui
 
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -19,6 +27,7 @@ import com.cupcakecomics.cover.FileCoverHandler
 import com.cupcakecomics.data.LibraryRepository
 import com.cupcakecomics.data.OfflineComicEntity
 import com.cupcakecomics.data.ReadMarkEntity
+import com.cupcakecomics.data.ReadStatusRepository
 import com.cupcakecomics.settings.CupcakeSettings
 import com.cupcakecomics.smb.ComicFileNames
 import com.nkanaev.comics.R
@@ -47,9 +56,11 @@ class OfflineLibraryController(
     private val header: TextView,
     private val chevron: ImageView,
     private val list: RecyclerView,
+    private val stack: FrameLayout,
     private val onHasOffline: (Boolean) -> Unit,
 ) {
     private val repo = LibraryRepository(context)
+    private val readStatus = ReadStatusRepository(context)
     private val settings = CupcakeSettings(context)
     private val prefs: SharedPreferences =
         context.getSharedPreferences("cupcake_library_ui", Context.MODE_PRIVATE)
@@ -72,6 +83,7 @@ class OfflineLibraryController(
     private var comics: List<OfflineComicEntity> = emptyList()
     private var readKeys: Set<String> = emptySet()
     private var expanded = prefs.getBoolean(PREF_EXPANDED, false)
+    private var pickerDialog: Dialog? = null
 
     init {
         refreshSpan()
@@ -89,6 +101,7 @@ class OfflineLibraryController(
                 repo.readMarks.collectLatest { marks ->
                     readKeys = marks.map { it.identityKey }.toSet()
                     adapter.submit(comics, selected, selectionMode, readKeys)
+                    updateStack()
                 }
             }
             repo.offlineComics.collectLatest { items ->
@@ -110,6 +123,8 @@ class OfflineLibraryController(
     fun stop() {
         collectJob?.cancel()
         actionMode?.finish()
+        pickerDialog?.dismiss()
+        pickerDialog = null
     }
 
     fun refreshTitlesVisibility() {
@@ -119,6 +134,7 @@ class OfflineLibraryController(
     fun refreshSpan() {
         val span = CoverGridHelper.spanCount(context, settings)
         list.layoutManager = GridLayoutManager(context, span)
+        updateStack()
     }
 
     private fun toggleExpanded() {
@@ -139,6 +155,158 @@ class OfflineLibraryController(
         } else {
             context.getString(R.string.library_offline_header)
         }
+        updateStack()
+    }
+
+    /**
+     * Collapsed look for larger libraries: a deck of covers layered so each
+     * underlying cover keeps ~20% visible as a tab above the next one.
+     * Tapping the deck opens a darkened grid overlay to pick a comic.
+     */
+    private fun updateStack() {
+        val show = comics.size > STACK_THRESHOLD && !expanded
+        stack.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+
+        stack.removeAllViews()
+        stack.setOnClickListener { showPickerOverlay() }
+        stack.contentDescription = context.getString(R.string.library_offline_stack_cd, comics.size)
+
+        val metrics = context.resources.displayMetrics
+        val density = metrics.density
+        val span = CoverGridHelper.spanCount(context, settings).coerceAtLeast(1)
+        val containerPad = (32 * density).toInt()
+        val tilePad = (6 * density).toInt()
+        val tileWidth = (metrics.widthPixels - containerPad) / span
+        val coverHeight = ((tileWidth - 2 * tilePad) / CoverImageView.FACTOR).toInt()
+        val tileHeight = coverHeight + 2 * tilePad
+        val peek = (tileHeight * STACK_PEEK_FRACTION).toInt()
+
+        val layers = comics.take(MAX_STACK_LAYERS)
+        val last = layers.lastIndex
+        for (i in last downTo 0) {
+            val comic = layers[i]
+            val tile = LayoutInflater.from(context)
+                .inflate(R.layout.item_offline_cover_tile, stack, false)
+            val cover = tile.findViewById<CoverImageView>(R.id.offline_cover)
+            val title = tile.findViewById<TextView>(R.id.offline_title)
+            val readCheck = tile.findViewById<ImageView>(R.id.offline_read_check)
+            val displayTitle = if (settings.hideCoverTitles) "" else ComicFileNames.shortDisplayName(comic.title)
+            title.text = displayTitle
+            title.visibility = if (displayTitle.isBlank()) View.GONE else View.VISIBLE
+            readCheck.visibility = if (comic.sourceKey in readKeys) View.VISIBLE else View.GONE
+            picasso.load(FileCoverHandler.uriFor(comic.localPath)).into(cover)
+            val lp = FrameLayout.LayoutParams(tileWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            lp.topMargin = (last - i) * peek
+            tile.translationZ = (i + 1).toFloat()
+            if (i == 0 && comics.size > layers.size) {
+                // Wrap the front cover so the "+N more" badge tracks its corner.
+                val wrapper = FrameLayout(context)
+                wrapper.addView(
+                    tile,
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ),
+                )
+                val badge = TextView(context).apply {
+                    text = context.getString(R.string.offline_stack_more, comics.size - layers.size)
+                    setTextColor(Color.WHITE)
+                    textSize = 12f
+                    val h = (10 * density).toInt()
+                    val v = (4 * density).toInt()
+                    setPadding(h, v, h, v)
+                    setBackgroundColor(0xCC000000.toInt())
+                }
+                val badgeLp = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+                badgeLp.gravity = Gravity.TOP or Gravity.END
+                val inset = (10 * density).toInt()
+                badgeLp.marginEnd = inset
+                badgeLp.topMargin = inset
+                wrapper.addView(badge, badgeLp)
+                stack.addView(wrapper, lp)
+            } else {
+                stack.addView(tile, lp)
+            }
+        }
+    }
+
+    /** Darkened full-screen grid of every downloaded comic; tap one to read it. */
+    private fun showPickerOverlay() {
+        if (comics.isEmpty()) return
+        val density = context.resources.displayMetrics.density
+        val dialog = Dialog(context)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+
+        val title = TextView(context).apply {
+            text = context.getString(R.string.library_offline_header) + " (${comics.size})"
+            setTextColor(Color.WHITE)
+            textSize = 18f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            val pad = (20 * density).toInt()
+            setPadding(pad, pad, pad, (12 * density).toInt())
+        }
+        val grid = RecyclerView(context).apply {
+            layoutManager = GridLayoutManager(context, CoverGridHelper.spanCount(context, settings))
+            val pad = (10 * density).toInt()
+            setPadding(pad, 0, pad, pad)
+            clipToPadding = false
+            adapter = Adapter(
+                picasso = picasso,
+                hideTitles = { settings.hideCoverTitles },
+                onClick = { comic ->
+                    dismissPickerOverlay()
+                    open(comic)
+                },
+                onLongClick = { true },
+            ).also {
+                it.submit(comics, emptySet(), false, readKeys)
+            }
+        }
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(
+                title,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+            addView(
+                grid,
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f),
+            )
+        }
+        val root = FrameLayout(context).apply {
+            // Taps outside the grid bubble up here and dismiss.
+            setOnClickListener { dismissPickerOverlay() }
+            addView(
+                content,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                ),
+            )
+        }
+        dialog.setContentView(root)
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            attributes = attributes.apply { dimAmount = 0.75f }
+        }
+        pickerDialog = dialog
+        dialog.setOnDismissListener { pickerDialog = null }
+        dialog.show()
+    }
+
+    private fun dismissPickerOverlay() {
+        pickerDialog?.dismiss()
+        pickerDialog = null
     }
 
     private fun open(comic: OfflineComicEntity) {
@@ -188,7 +356,7 @@ class OfflineLibraryController(
             when (item.itemId) {
                 R.id.action_mark_read -> {
                     scope.launch {
-                        repo.markRead(
+                        readStatus.markRead(
                             picked.map {
                                 ReadMarkEntity(
                                     identityKey = it.sourceKey,
@@ -210,7 +378,7 @@ class OfflineLibraryController(
                 }
                 R.id.action_mark_unread -> {
                     scope.launch {
-                        repo.unmarkRead(picked.map { it.sourceKey })
+                        readStatus.markUnread(picked.map { it.sourceKey })
                         Toast.makeText(
                             context,
                             context.getString(R.string.marked_unread_toast, picked.size),
@@ -325,5 +493,14 @@ class OfflineLibraryController(
 
     companion object {
         private const val PREF_EXPANDED = "offline_section_expanded_v2"
+
+        /** Stack instead of a plain grid once the section holds more than this. */
+        private const val STACK_THRESHOLD = 4
+
+        /** Front cover plus this many minus one tabbed covers behind it. */
+        private const val MAX_STACK_LAYERS = 4
+
+        /** Fraction of each tabbed cover left visible above the next layer. */
+        private const val STACK_PEEK_FRACTION = 0.20f
     }
 }

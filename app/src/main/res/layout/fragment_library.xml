@@ -193,6 +193,16 @@
                                 android:contentDescription="@string/library_offline_toggle"/>
                     </LinearLayout>
 
+                    <FrameLayout
+                            android:id="@+id/library_offline_stack"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="12dp"
+                            android:visibility="gone"/>
+
                     <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/library_offline_list"
                             android:layout_width="match_parent"

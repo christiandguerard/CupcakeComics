@@ -110,6 +110,8 @@
     <string name="library_offline_empty">No offline comics yet</string>
     <string name="library_offline_stats">%1$s · %2$s</string>
     <string name="library_offline_toggle">Expand or collapse downloads</string>
+    <string name="library_offline_stack_cd">Show all %1$d downloaded comics</string>
+    <string name="offline_stack_more">+%1$d more</string>
     <string name="library_local_header">Local files</string>
     <string name="library_local_add">Add local file</string>
     <string name="library_local_toggle">Expand or collapse local files</string>
