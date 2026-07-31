@@ -87,14 +87,6 @@ class LibraryRepository(context: Context) {
             }
         }
 
-    suspend fun markRead(entries: List<ReadMarkEntity>) = withContext(Dispatchers.IO) {
-        db.readMarkDao().upsertAll(entries)
-    }
-
-    suspend fun unmarkRead(keys: List<String>) = withContext(Dispatchers.IO) {
-        db.readMarkDao().deleteKeys(keys)
-    }
-
     suspend fun readKeys(): Set<String> = withContext(Dispatchers.IO) {
         db.readMarkDao().getAllKeys().toSet()
     }
