@@ -22,6 +22,7 @@ import com.cupcakecomics.data.ConnectionRepository
 import com.cupcakecomics.data.LibraryRepository
 import com.cupcakecomics.data.MonitoredFolderEntity
 import com.cupcakecomics.data.PullComicEntity
+import com.cupcakecomics.data.ReadStatusRepository
 import com.cupcakecomics.pulllist.PullEstimateRepository
 import com.cupcakecomics.pulllist.PullListRepository
 import com.cupcakecomics.pulllist.PullListWorker
@@ -48,6 +49,7 @@ class PullListFragment : Fragment() {
     private lateinit var estimateRepo: PullEstimateRepository
     private lateinit var connections: ConnectionRepository
     private lateinit var libraryRepo: LibraryRepository
+    private lateinit var readStatus: ReadStatusRepository
     private lateinit var refresh: SwipeRefreshLayout
     private lateinit var empty: TextView
     private lateinit var unreadList: RecyclerView
@@ -73,6 +75,7 @@ class PullListFragment : Fragment() {
         estimateRepo = PullEstimateRepository(requireContext())
         connections = ConnectionRepository(requireContext())
         libraryRepo = LibraryRepository(requireContext())
+        readStatus = ReadStatusRepository(requireContext())
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -303,8 +306,8 @@ class PullListFragment : Fragment() {
             .setItems(labels) { _, which ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     when (which) {
-                        0 -> repo.markRead(item.identityKey)
-                        1 -> repo.markUnread(item.identityKey)
+                        0 -> readStatus.markPullComicRead(item)
+                        1 -> readStatus.markPullComicUnread(item)
                         2 -> repo.ignoreFromPull(item.identityKey)
                     }
                 }

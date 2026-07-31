@@ -18,6 +18,7 @@ import com.cupcakecomics.cover.SmbNetworkCoverCache
 import com.cupcakecomics.data.ConnectionRepository
 import com.cupcakecomics.data.LibraryRepository
 import com.cupcakecomics.data.PullComicEntity
+import com.cupcakecomics.data.ReadStatusRepository
 import com.cupcakecomics.pulllist.PullListRepository
 import com.cupcakecomics.settings.CupcakeSettings
 import com.cupcakecomics.smb.SmbStageManager
@@ -53,6 +54,7 @@ class PullListLibraryController(
     private val pullRepo = PullListRepository(context)
     private val connections = ConnectionRepository(context)
     private val libraryRepo = LibraryRepository(context)
+    private val readStatus = ReadStatusRepository(context)
     private val settings = CupcakeSettings(context)
     private val prefs: SharedPreferences =
         context.getSharedPreferences("cupcake_library_ui", Context.MODE_PRIVATE)
@@ -251,8 +253,8 @@ class PullListLibraryController(
             .setItems(labels) { _, which ->
                 scope.launch {
                     when (which) {
-                        0 -> pullRepo.markRead(item.identityKey)
-                        1 -> pullRepo.markUnread(item.identityKey)
+                        0 -> readStatus.markPullComicRead(item)
+                        1 -> readStatus.markPullComicUnread(item)
                         2 -> pullRepo.ignoreFromPull(item.identityKey)
                     }
                 }

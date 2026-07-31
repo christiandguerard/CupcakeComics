@@ -26,6 +26,7 @@ import com.cupcakecomics.data.ConnectionRepository
 import com.cupcakecomics.data.CredentialStore
 import com.cupcakecomics.data.LibraryRepository
 import com.cupcakecomics.data.ReadMarkEntity
+import com.cupcakecomics.data.ReadStatusRepository
 import com.cupcakecomics.data.SmbShareEntity
 import com.cupcakecomics.smb.ComicFileNames
 import com.cupcakecomics.smb.SmbBrowser
@@ -55,6 +56,7 @@ class SmbBrowseFragment : Fragment() {
     private var currentPath: String = ""
     private lateinit var repo: ConnectionRepository
     private lateinit var libraryRepo: LibraryRepository
+    private lateinit var readStatus: ReadStatusRepository
     private lateinit var browser: SmbBrowser
     private lateinit var pathView: TextView
     private lateinit var statusView: TextView
@@ -81,6 +83,7 @@ class SmbBrowseFragment : Fragment() {
         currentPath = savedInstanceState?.getString(STATE_PATH).orEmpty()
         repo = ConnectionRepository(requireContext())
         libraryRepo = LibraryRepository(requireContext())
+        readStatus = ReadStatusRepository(requireContext())
         browser = SmbBrowser(repo.credentialStore())
         requireActivity().onBackPressedDispatcher.addCallback(
             this,
@@ -300,7 +303,7 @@ class SmbBrowseFragment : Fragment() {
             when (item.itemId) {
                 R.id.action_mark_read -> {
                     viewLifecycleOwner.lifecycleScope.launch {
-                        libraryRepo.markRead(
+                        readStatus.markRead(
                             picked.map {
                                 ReadMarkEntity(
                                     identityKey = identityKey(it.relativePath),
@@ -322,7 +325,7 @@ class SmbBrowseFragment : Fragment() {
                 }
                 R.id.action_mark_unread -> {
                     viewLifecycleOwner.lifecycleScope.launch {
-                        libraryRepo.unmarkRead(picked.map { identityKey(it.relativePath) })
+                        readStatus.markUnread(picked.map { identityKey(it.relativePath) })
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.marked_unread_toast, picked.size),

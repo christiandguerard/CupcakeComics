@@ -19,6 +19,7 @@ import com.cupcakecomics.cover.FileCoverHandler
 import com.cupcakecomics.data.LibraryRepository
 import com.cupcakecomics.data.LocalFileEntity
 import com.cupcakecomics.data.ReadMarkEntity
+import com.cupcakecomics.data.ReadStatusRepository
 import com.cupcakecomics.settings.CupcakeSettings
 import com.nkanaev.comics.R
 import com.nkanaev.comics.activity.MainActivity
@@ -51,6 +52,7 @@ class LocalFilesLibraryController(
     private val onHasLocal: (Boolean) -> Unit,
 ) {
     private val repo = LibraryRepository(context)
+    private val readStatus = ReadStatusRepository(context)
     private val settings = CupcakeSettings(context)
     private val prefs: SharedPreferences =
         context.getSharedPreferences("cupcake_library_ui", Context.MODE_PRIVATE)
@@ -204,7 +206,7 @@ class LocalFilesLibraryController(
             when (item.itemId) {
                 R.id.action_mark_read -> {
                     scope.launch {
-                        repo.markRead(
+                        readStatus.markRead(
                             picked.map {
                                 ReadMarkEntity(
                                     identityKey = it.sourceKey,
@@ -226,7 +228,7 @@ class LocalFilesLibraryController(
                 }
                 R.id.action_mark_unread -> {
                     scope.launch {
-                        repo.unmarkRead(picked.map { it.sourceKey })
+                        readStatus.markUnread(picked.map { it.sourceKey })
                         Toast.makeText(
                             context,
                             context.getString(R.string.marked_unread_toast, picked.size),
