@@ -1,11 +1,9 @@
 package com.cupcakecomics.ui
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.text.format.Formatter
 import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -21,11 +19,10 @@ import com.cupcakecomics.data.ReadStatusRepository
 import com.cupcakecomics.pulllist.PullListRepository
 import com.cupcakecomics.reader.ReaderLauncher
 import com.cupcakecomics.settings.CupcakeSettings
+import com.cupcakecomics.smb.ComicFileNames
 import com.cupcakecomics.smb.SmbStageManager
 import com.nkanaev.comics.R
 import com.nkanaev.comics.activity.MainActivity
-import com.nkanaev.comics.managers.Utils
-import com.nkanaev.comics.view.CoverImageView
 import com.squareup.picasso.Picasso
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,29 +50,36 @@ class PullListLibraryController(
     private val libraryRepo = LibraryRepository(context)
     private val readStatus = ReadStatusRepository(context)
     private val settings = CupcakeSettings(context)
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("cupcake_library_ui", Context.MODE_PRIVATE)
     private val picasso: Picasso = (context as MainActivity).picasso
-    private val adapter = Adapter(
-        picasso = picasso,
-        libraryRepo = libraryRepo,
-        connections = connections,
-        scope = scope,
+    private var collectJob: Job? = null
+    private var comics: List<PullComicEntity> = emptyList()
+    private var etaJob: Job? = null
+
+    private val adapter = CoverTileAdapter<PullComicEntity>(
+        titleOf = { ComicFileNames.shortDisplayName(it.title) },
+        bindCover = { holder, item -> bindPullCover(holder, item) },
         hideTitles = { settings.hideCoverTitles },
         onClick = { openComic(it) },
         onLongClick = { showActions(it); true },
     )
-    private var collectJob: Job? = null
-    private var comics: List<PullComicEntity> = emptyList()
-    private var expanded = prefs.getBoolean(PREF_EXPANDED, true)
-    private var etaJob: Job? = null
+
+    private val chrome = CollapsibleSectionChrome(
+        context = context,
+        prefs = context.getSharedPreferences("cupcake_library_ui", Context.MODE_PRIVATE),
+        prefKey = PREF_EXPANDED,
+        defaultExpanded = true,
+        headerRow = headerRow,
+        header = header,
+        chevron = chevron,
+        titleRes = R.string.menu_pull_list,
+        onChanged = { applyExpanded() },
+    )
 
     init {
         refreshSpan()
         list.adapter = adapter
         list.isNestedScrollingEnabled = false
         list.overScrollMode = View.OVER_SCROLL_NEVER
-        headerRow.setOnClickListener { toggleExpanded() }
         settingsButton.setOnClickListener { showPullMenu(it) }
         empty.setOnClickListener { openPullList() }
         applyExpanded()
@@ -113,25 +117,12 @@ class PullListLibraryController(
         adapter.notifyDataSetChanged()
     }
 
-    private fun toggleExpanded() {
-        expanded = !expanded
-        prefs.edit().putBoolean(PREF_EXPANDED, expanded).apply()
-        applyExpanded()
-    }
-
     private fun applyExpanded() {
         val has = comics.isNotEmpty()
-        header.text = if (has) {
-            context.getString(R.string.menu_pull_list) + " (${comics.size})"
-        } else {
-            context.getString(R.string.menu_pull_list)
-        }
-        chevron.setImageResource(
-            if (expanded) R.drawable.ic_expand_less_24 else R.drawable.ic_expand_more_24,
-        )
-        list.visibility = if (has && expanded) View.VISIBLE else View.GONE
-        empty.visibility = if (!has && expanded) View.VISIBLE else View.GONE
-        if (!has && expanded && empty.text.isNullOrBlank()) {
+        chrome.apply(comics.size)
+        list.visibility = if (has && chrome.expanded) View.VISIBLE else View.GONE
+        empty.visibility = if (!has && chrome.expanded) View.VISIBLE else View.GONE
+        if (!has && chrome.expanded && empty.text.isNullOrBlank()) {
             empty.setText(R.string.library_pull_empty_short)
         }
     }
@@ -200,7 +191,7 @@ class PullListLibraryController(
             val titleView = dialogView.findViewById<TextView>(R.id.download_title)
             val bar = dialogView.findViewById<android.widget.ProgressBar>(R.id.download_progress)
             val bytesView = dialogView.findViewById<TextView>(R.id.download_bytes)
-            titleView.text = Utils.removeExtensionIfAny(item.title)
+            titleView.text = ComicFileNames.shortDisplayName(item.title)
             bar.isIndeterminate = true
             val dialog = AlertDialog.Builder(context)
                 .setView(dialogView)
@@ -242,7 +233,7 @@ class PullListLibraryController(
             context.getString(R.string.pull_list_ignore),
         )
         AlertDialog.Builder(context)
-            .setTitle(Utils.removeExtensionIfAny(item.title))
+            .setTitle(ComicFileNames.shortDisplayName(item.title))
             .setItems(labels) { _, which ->
                 scope.launch {
                     when (which) {
@@ -255,80 +246,42 @@ class PullListLibraryController(
             .show()
     }
 
-    private class Adapter(
-        private val picasso: Picasso,
-        private val libraryRepo: LibraryRepository,
-        private val connections: ConnectionRepository,
-        private val scope: CoroutineScope,
-        private val hideTitles: () -> Boolean,
-        private val onClick: (PullComicEntity) -> Unit,
-        private val onLongClick: (PullComicEntity) -> Boolean,
-    ) : RecyclerView.Adapter<Adapter.VH>() {
-        private var items: List<PullComicEntity> = emptyList()
-
-        fun submit(next: List<PullComicEntity>) {
-            items = next
-            notifyDataSetChanged()
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_offline_cover_tile, parent, false)
-            return VH(view)
-        }
-
-        override fun onBindViewHolder(holder: VH, position: Int) {
-            val item = items[position]
-            val hide = hideTitles()
-            val displayTitle = if (hide) "" else Utils.removeExtensionIfAny(item.title)
-            holder.title.text = displayTitle
-            holder.title.visibility = if (displayTitle.isBlank()) View.GONE else View.VISIBLE
-            holder.cover.setImageResource(R.drawable.ic_collections_image_24)
-            holder.cover.tag = item.identityKey
-            holder.selected.visibility = View.GONE
-            scope.launch {
-                val offline = withContext(Dispatchers.IO) {
-                    libraryRepo.getOfflineBySource(item.identityKey)
-                }
-                if (holder.cover.tag != item.identityKey) return@launch
-                if (offline != null) {
-                    picasso.load(FileCoverHandler.uriFor(offline.localPath))
-                        .placeholder(R.drawable.ic_collections_image_24)
-                        .error(R.drawable.ic_collections_image_24)
-                        .fit()
-                        .centerCrop()
-                        .into(holder.cover)
-                    return@launch
-                }
-                val networkCover = withContext(Dispatchers.IO) {
-                    val share = connections.getSmbShare(item.shareId) ?: return@withContext null
-                    SmbNetworkCoverCache.ensureComicCover(
-                        holder.itemView.context.applicationContext,
-                        share,
-                        item.relativePath,
-                        connections.credentialStore(),
-                        libraryRepo,
-                    )
-                }
-                if (holder.cover.tag == item.identityKey && networkCover != null) {
-                    picasso.load(File(networkCover))
-                        .placeholder(R.drawable.ic_collections_image_24)
-                        .error(R.drawable.ic_collections_image_24)
-                        .fit()
-                        .centerCrop()
-                        .into(holder.cover)
-                }
+    /** Offline copy first, then the network cover cache; placeholder until then. */
+    private fun bindPullCover(holder: CoverTileAdapter.VH, item: PullComicEntity) {
+        holder.cover.setImageResource(R.drawable.ic_collections_image_24)
+        holder.cover.tag = item.identityKey
+        scope.launch {
+            val offline = withContext(Dispatchers.IO) {
+                libraryRepo.getOfflineBySource(item.identityKey)
             }
-            holder.itemView.setOnClickListener { onClick(item) }
-            holder.itemView.setOnLongClickListener { onLongClick(item) }
-        }
-
-        override fun getItemCount(): Int = items.size
-
-        class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val cover: CoverImageView = view.findViewById(R.id.offline_cover)
-            val title: TextView = view.findViewById(R.id.offline_title)
-            val selected: View = view.findViewById(R.id.offline_selected)
+            if (holder.cover.tag != item.identityKey) return@launch
+            if (offline != null) {
+                picasso.load(FileCoverHandler.uriFor(offline.localPath))
+                    .placeholder(R.drawable.ic_collections_image_24)
+                    .error(R.drawable.ic_collections_image_24)
+                    .fit()
+                    .centerCrop()
+                    .into(holder.cover)
+                return@launch
+            }
+            val networkCover = withContext(Dispatchers.IO) {
+                val share = connections.getSmbShare(item.shareId) ?: return@withContext null
+                SmbNetworkCoverCache.ensureComicCover(
+                    holder.itemView.context.applicationContext,
+                    share,
+                    item.relativePath,
+                    connections.credentialStore(),
+                    libraryRepo,
+                )
+            }
+            if (holder.cover.tag == item.identityKey && networkCover != null) {
+                picasso.load(File(networkCover))
+                    .placeholder(R.drawable.ic_collections_image_24)
+                    .error(R.drawable.ic_collections_image_24)
+                    .fit()
+                    .centerCrop()
+                    .into(holder.cover)
+            }
         }
     }
 
