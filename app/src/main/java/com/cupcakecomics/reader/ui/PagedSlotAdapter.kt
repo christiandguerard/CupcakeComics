@@ -2,12 +2,15 @@ package com.cupcakecomics.reader.ui
 
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.cupcakecomics.reader.PageBorderColor
 import com.cupcakecomics.reader.ReaderViewModel
 import com.cupcakecomics.reader.gl.PageDecodeCache
 import com.cupcakecomics.reader.model.FitMode
 import com.cupcakecomics.reader.model.OrientationContext
 import com.cupcakecomics.reader.model.ReaderSession
+import com.nkanaev.comics.R
 
 /**
  * One page (slot) per ViewPager2 item. Prefers cached bitmaps to avoid blank frames while scrolling.
@@ -49,7 +52,7 @@ class PagedSlotAdapter(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
-            setBackgroundColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(ContextCompat.getColor(parent.context, R.color.darkest))
             setLayerType(View.LAYER_TYPE_HARDWARE, null)
             isClickable = true
         }
@@ -72,10 +75,11 @@ class PagedSlotAdapter(
         val cached = decodeCache.get(key)
         if (cached != null) {
             holder.image.setImageBitmap(cached)
+            holder.image.setBackgroundColor(PageBorderColor.fromBitmap(cached))
             holder.boundKey = key
             decodeCache.pin(key)
+            return
         }
-        if (cached != null) return
         decodeCache.request(
             source = source,
             slot = slot,

@@ -51,6 +51,8 @@ object PageBorderColor {
             for (x in (w - strip) until w) sample(x, y)
         }
 
-        return if (white >= black) Color.WHITE else Color.BLACK
+        // Ties fall back to black: a black matte never frames the page in a
+        // visible border, while a wrong white matte reads as a glaring frame.
+        return if (white > black) Color.WHITE else Color.BLACK
     }
 }

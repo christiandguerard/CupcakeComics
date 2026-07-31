@@ -1240,7 +1240,7 @@ private class ContinuousPageAdapter(
             }
             adjustViewBounds = true
             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-            setBackgroundColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(androidx.core.content.ContextCompat.getColor(parent.context, R.color.darkest))
         }
         return VH(iv)
     }
@@ -1257,6 +1257,7 @@ private class ContinuousPageAdapter(
         val cached = decodeCache.get(key)
         if (cached != null) {
             holder.image.setImageBitmap(cached)
+            holder.image.setBackgroundColor(PageBorderColor.fromBitmap(cached))
             holder.boundKey = key
             decodeCache.pin(key)
             return
