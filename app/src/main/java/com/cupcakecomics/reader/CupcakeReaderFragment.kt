@@ -461,12 +461,28 @@ class CupcakeReaderFragment : Fragment() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
+    /**
+     * Pre-update pending intents stored the mode as a Serializable enum
+     * (MODE_BROWSER/MODE_LIBRARY/MODE_INTENT) under PARAM_MODE. Read it
+     * without referencing the deleted class so stale alarms still resolve.
+     */
+    private fun legacyMode(args: Bundle): String? =
+        runCatching {
+            when ((args.getSerializable(PARAM_MODE) as? Enum<*>)?.name) {
+                "MODE_BROWSER" -> MODE_FILE
+                "MODE_LIBRARY" -> MODE_LIBRARY
+                "MODE_INTENT" -> MODE_INTENT
+                else -> null
+            }
+        }.getOrNull()
+
     private fun openFromArgs() {
         val args = arguments ?: Bundle()
         val identity = args.getString(PARAM_IDENTITY_KEY)
             ?: activity?.intent?.getStringExtra(PARAM_IDENTITY_KEY)
         val mode = args.getString(PARAM_MODE)
             ?: activity?.intent?.getStringExtra(PARAM_MODE)
+            ?: legacyMode(args)
             ?: MODE_FILE
         val initialPage = args.getInt(PARAM_PAGE, 0)
             .takeIf { it > 0 }
