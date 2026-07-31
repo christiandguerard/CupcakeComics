@@ -199,7 +199,8 @@ class OfflineLibraryController(
             val lp = FrameLayout.LayoutParams(tileWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             lp.topMargin = (last - i) * peek
-            tile.translationZ = (i + 1).toFloat()
+            // Front cover (i == 0) stacks highest; back layers step down.
+            val z = (last - i + 1).toFloat()
             if (i == 0 && comics.size > layers.size) {
                 // Wrap the front cover so the "+N more" badge tracks its corner.
                 val wrapper = FrameLayout(context)
@@ -228,8 +229,10 @@ class OfflineLibraryController(
                 badgeLp.marginEnd = inset
                 badgeLp.topMargin = inset
                 wrapper.addView(badge, badgeLp)
+                wrapper.translationZ = z
                 stack.addView(wrapper, lp)
             } else {
+                tile.translationZ = z
                 stack.addView(tile, lp)
             }
         }
