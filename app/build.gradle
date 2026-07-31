@@ -12,6 +12,11 @@ android {
     // Cupcake Comics SPEC-v1: minSdk 30 / targetSdk 35; compileSdk 36 required by AndroidX activity 1.11+
     compileSdk = 36
 
+    sourceSets {
+        // Exported Room schemas, consumed by MigrationTestHelper in androidTest.
+        androidTest.assets.srcDirs += files("$projectDir/schemas")
+    }
+
     defaultConfig {
         applicationId = "com.cupcakecomics.app"
         namespace = "com.nkanaev.comics"
@@ -213,6 +218,7 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.6.2'
     androidTestImplementation 'androidx.test:rules:1.6.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation 'androidx.room:room-testing:2.6.1'
 }
 
 // write deps to BuildConfig for AboutFragment to display
