@@ -34,7 +34,7 @@ jobs:
           GH_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
       - name: Verify APK signature
-        run: jarsigner -verify -certs -verbose app/build/outputs/apk/release/CupcakeComics-0.1.0.apk
+        run: jarsigner -verify -certs -verbose app/build/outputs/apk/release/CupcakeComics-*.apk
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
