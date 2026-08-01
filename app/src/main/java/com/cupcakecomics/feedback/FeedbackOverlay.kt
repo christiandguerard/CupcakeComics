@@ -132,20 +132,29 @@ object FeedbackOverlay {
                 val note = if (title.isNotBlank()) "$title\n\n$desc" else desc
                 try {
                     val result = FeedbackCapture.capture(activity, note, hideViews = listOf(fab))
-                    // Attempt GitHub upload
                     try {
-                        FeedbackUploader.uploadReport(activity, result, title)
+                        FeedbackUploader.uploadReport(activity, result, title) { posted ->
+                            val message = if (posted) {
+                                activity.getString(R.string.feedback_submitted_toast)
+                            } else {
+                                activity.getString(
+                                    R.string.feedback_not_posted_toast,
+                                    result.downloadsRelativePath,
+                                )
+                            }
+                            Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
+                        }
                     } catch (_: Throwable) {
                         // Upload failure is non-fatal — files are saved locally
+                        Toast.makeText(
+                            activity,
+                            activity.getString(
+                                R.string.feedback_not_posted_toast,
+                                result.downloadsRelativePath,
+                            ),
+                            Toast.LENGTH_LONG,
+                        ).show()
                     }
-                    Toast.makeText(
-                        activity,
-                        activity.getString(
-                            R.string.feedback_saved_toast,
-                            result.downloadsRelativePath,
-                        ),
-                        Toast.LENGTH_LONG,
-                    ).show()
                 } catch (t: Throwable) {
                     Toast.makeText(
                         activity,
