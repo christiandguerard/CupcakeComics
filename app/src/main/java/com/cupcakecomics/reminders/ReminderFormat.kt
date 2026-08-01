@@ -21,7 +21,7 @@ object ReminderFormat {
 
     fun scheduleSummary(context: Context, entity: ReminderEntity): String {
         val time = hourLabel(context, entity.hourOfDay)
-        return when (entity.frequency) {
+        val base = when (entity.frequency) {
             ReminderFrequency.DAILY ->
                 context.getString(R.string.reminders_schedule_daily, time)
             ReminderFrequency.WEEKLY ->
@@ -37,6 +37,10 @@ object ReminderFormat {
                     time,
                 )
         }
+        if (entity.type == ReminderType.BOOK && !entity.effectiveNotify()) {
+            return "$base · ${context.getString(R.string.reminders_notify_off)}"
+        }
+        return base
     }
 
     fun title(context: Context, entity: ReminderEntity): String {
@@ -49,6 +53,9 @@ object ReminderFormat {
 
     fun modeBadge(context: Context, entity: ReminderEntity): String? {
         if (entity.type != ReminderType.BOOK) return null
+        if (entity.dailyPageGoal >= DailyReadingTracker.MIN_GOAL) {
+            return context.getString(R.string.reminders_mode_goal, entity.dailyPageGoal)
+        }
         return when (entity.pageMode) {
             ReminderPageMode.PAGE_A_DAY -> context.getString(R.string.reminders_mode_page_a_day)
             ReminderPageMode.RESUME -> context.getString(R.string.reminders_mode_resume)

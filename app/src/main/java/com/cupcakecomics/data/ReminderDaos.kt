@@ -66,4 +66,24 @@ interface ReminderDao {
         """,
     )
     suspend fun updateTrackedPageForIdentity(identityKey: String, page: Int)
+
+    @Query(
+        """
+        SELECT * FROM reminders
+        WHERE enabled = 1 AND type = 'BOOK' AND dailyPageGoal >= :minGoal
+        """,
+    )
+    suspend fun getEnabledGoalReminders(minGoal: Int): List<ReminderEntity>
+}
+
+@Dao
+interface DailyReadingProgressDao {
+    @Query("SELECT * FROM daily_reading_progress WHERE bookKey = :bookKey AND day = :day LIMIT 1")
+    suspend fun get(bookKey: String, day: String): DailyReadingProgressEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: DailyReadingProgressEntity)
+
+    @Query("DELETE FROM daily_reading_progress WHERE day < :cutoffDay")
+    suspend fun pruneBefore(cutoffDay: String)
 }

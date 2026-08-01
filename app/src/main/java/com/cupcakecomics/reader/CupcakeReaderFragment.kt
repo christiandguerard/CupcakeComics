@@ -15,6 +15,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.TextView
@@ -565,6 +566,15 @@ class CupcakeReaderFragment : Fragment() {
                         } else {
                             bytesText?.visibility = View.GONE
                         }
+                    }
+                }
+                launch {
+                    viewModel.dailyGoalMet.collect { met ->
+                        val root = view?.findViewById<FrameLayout>(R.id.cupcake_reader_root) ?: return@collect
+                        TopBanner.show(
+                            root,
+                            getString(R.string.reader_daily_goal_met, met.goal, met.title),
+                        )
                     }
                 }
             }

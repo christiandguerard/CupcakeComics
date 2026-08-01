@@ -37,8 +37,31 @@ data class ReminderEntity(
     val pageADayIndex: Int = 1,
     /** 1-based tracked progress for local-file resume mode. */
     val trackedPage: Int = 1,
+    /**
+     * Optional daily habit goal in pages. Values >= 2 enable per-day page counting
+     * and a one-time in-reader banner when the goal is met. 0/1 = no goal.
+     */
+    @androidx.room.ColumnInfo(defaultValue = "0")
+    val dailyPageGoal: Int = 0,
+    /** When false no status-bar reminder is scheduled; goal tracking still applies. */
+    @androidx.room.ColumnInfo(defaultValue = "1")
+    val notifyEnabled: Boolean = true,
     val lastFiredAt: Long = 0L,
     val nextFireAt: Long = 0L,
+) {
+    /** Page-a-day reminders need their fire to advance the page, so they always notify. */
+    fun effectiveNotify(): Boolean = notifyEnabled || pageMode == ReminderPageMode.PAGE_A_DAY
+}
+
+@Entity(tableName = "daily_reading_progress", primaryKeys = ["bookKey", "day"])
+data class DailyReadingProgressEntity(
+    /** Canonical book key: reminder identityKey, else localPath, else "reminder:{id}". */
+    val bookKey: String,
+    /** Local calendar day, yyyy-MM-dd. */
+    val day: String,
+    val pagesRead: Int = 0,
+    /** Epoch millis when the daily goal banner fired; 0 = not yet met today. */
+    val goalMetAt: Long = 0L,
 )
 
 /** Calendar constants without importing java.util.Calendar in entity defaults at compile time issues. */

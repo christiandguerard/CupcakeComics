@@ -12,6 +12,11 @@ android {
     // Cupcake Comics SPEC-v1: minSdk 30 / targetSdk 35; compileSdk 36 required by AndroidX activity 1.11+
     compileSdk = 36
 
+    sourceSets {
+        // Exported Room schemas, consumed by MigrationTestHelper in androidTest.
+        androidTest.assets.srcDirs += files("$projectDir/schemas")
+    }
+
     defaultConfig {
         applicationId = "com.cupcakecomics.app"
         namespace = "com.nkanaev.comics"
@@ -22,7 +27,7 @@ android {
         vectorDrawables.useSupportLibrary = true
 
         // Clean Cupcake version — do not derive from Bubble2 git tags (they embed movie-quote titles).
-        versionName = "0.2.0"
+        versionName = "0.3.0"
         // In CI: use GITHUB_RUN_NUMBER or git commit count for sequential versionCode
         // Local builds default to 1
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: 
@@ -213,6 +218,7 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.6.2'
     androidTestImplementation 'androidx.test:rules:1.6.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation 'androidx.room:room-testing:2.6.1'
 }
 
 // write deps to BuildConfig for AboutFragment to display
