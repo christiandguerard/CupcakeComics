@@ -5,64 +5,139 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.cupcakecomics.data.ConnectionRepository
+import com.cupcakecomics.data.DownloadJobEntity
 import com.cupcakecomics.notifications.CupcakeNotifications
-import com.cupcakecomics.settings.CupcakeSettings
 import com.cupcakecomics.smb.SmbStageManager
 import com.nkanaev.comics.R
 import com.nkanaev.comics.managers.Utils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.concurrent.CancellationException
 
 /**
- * Downloads SMB comics for offline use without blocking the UI.
+ * Drains the persistent download queue (Room `download_jobs`) one job at a time.
+ *
+ * Reliability design:
+ * - Queue state lives in the database, so process death loses nothing; jobs left
+ *   RUNNING are re-queued at the next start.
+ * - Each job gets up to [MAX_ATTEMPTS] attempts with backoff before it is marked
+ *   FAILED with the real error; failures are retryable from the Downloads screen.
+ * - Work is constrained to a connected network, so WorkManager pauses it when
+ *   connectivity drops and resumes it when it returns.
+ * - The stage routine writes to a temp file and atomically renames after size
+ *   validation, so a dropped connection can never register a truncated comic.
  */
 class OfflineDownloadWorker(
     appContext: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
-    override suspend fun doWork(): Result {
-        val shareId = inputData.getLong(KEY_SHARE_ID, -1L)
-        val paths = inputData.getStringArray(KEY_PATHS)?.toList().orEmpty()
-        if (shareId < 0L || paths.isEmpty()) return Result.failure()
+    private val queue = DownloadQueueRepository(applicationContext)
 
+    override suspend fun doWork(): Result {
         val connections = ConnectionRepository(applicationContext)
-        val share = connections.getSmbShare(shareId) ?: return Result.failure()
         val stage = SmbStageManager(applicationContext, connections.credentialStore())
         val okTitles = mutableListOf<String>()
-        val total = paths.size
+        var failed = 0
 
-        setForegroundSafe(progressNotification(0, total, paths.firstOrNull().orEmpty()))
+        queue.requeueRunningLeftovers()
+        queue.pruneSucceeded(System.currentTimeMillis() - KEEP_SUCCEEDED_MS)
 
-        for ((index, path) in paths.withIndex()) {
-            if (isStopped) break
-            val name = path.substringAfterLast('/').ifBlank { path }
-            setForegroundSafe(progressNotification(index, total, name))
-            val result = stage.stage(
-                share = share,
-                relativePath = path,
-                keepOffline = true,
-                isCancelled = { isStopped },
-                onProgress = null,
-            )
-            if (result.isSuccess) {
-                okTitles.add(name)
+        setForegroundSafe(progressNotification(0, 1, ""))
+
+        var doneCount = 0
+        var totalCount = 1
+        while (!isStopped) {
+            val job = queue.nextQueued() ?: break
+            totalCount = doneCount + failed + remainingEstimate() + 1
+            setForegroundSafe(progressNotification(doneCount, totalCount, job.title))
+            when (runJob(job, stage, connections)) {
+                JobOutcome.SUCCEEDED -> {
+                    okTitles.add(job.title.ifBlank { job.relativePath.substringAfterLast('/') })
+                    doneCount++
+                }
+                JobOutcome.FAILED -> failed++
+                JobOutcome.STOPPED -> break
             }
         }
 
-        if (okTitles.isNotEmpty() && CupcakeSettings(applicationContext).notifyDownloads) {
-            CupcakeNotifications.onDownloadsComplete(applicationContext, okTitles)
+        if (!isStopped && (okTitles.isNotEmpty() || failed > 0)) {
+            CupcakeNotifications.onDownloadsFinished(applicationContext, okTitles, failed)
         }
-        return Result.success(
-            Data.Builder().putInt(KEY_DONE_COUNT, okTitles.size).build(),
-        )
+        return Result.success()
     }
+
+    private suspend fun remainingEstimate(): Int =
+        runCatching { queue.queuedCount() }.getOrDefault(0)
+
+    private enum class JobOutcome { SUCCEEDED, FAILED, STOPPED }
+
+    private suspend fun runJob(
+        job: DownloadJobEntity,
+        stage: SmbStageManager,
+        connections: ConnectionRepository,
+    ): JobOutcome {
+        val share = connections.getSmbShare(job.shareId)
+        if (share == null) {
+            queue.markFailed(job.id, "Connection no longer exists")
+            return JobOutcome.FAILED
+        }
+        var attempt = 0
+        var lastError: String? = null
+        while (attempt < MAX_ATTEMPTS) {
+            if (isStopped) {
+                queue.requeue(job.id)
+                return JobOutcome.STOPPED
+            }
+            attempt++
+            lastProgressWrite = 0L
+            queue.markRunning(job.id, attempt)
+            val result = withContext(Dispatchers.IO) {
+                stage.stage(
+                    share = share,
+                    relativePath = job.relativePath,
+                    keepOffline = true,
+                    isCancelled = { isStopped },
+                    onProgress = { done, total ->
+                        // Throttled by the stage manager; keep DB writes light too.
+                        if (done == total || done - lastProgressWrite > PROGRESS_WRITE_STEP) {
+                            lastProgressWrite = done
+                            kotlinx.coroutines.runBlocking {
+                                runCatching { queue.setProgress(job.id, done, total) }
+                            }
+                        }
+                    },
+                )
+            }
+            if (result.isSuccess) {
+                queue.markSucceeded(job.id)
+                return JobOutcome.SUCCEEDED
+            }
+            val err = result.exceptionOrNull()
+            if (isStopped || err is CancellationException || err?.cause is CancellationException) {
+                queue.requeue(job.id)
+                return JobOutcome.STOPPED
+            }
+            lastError = err?.message ?: "Download failed"
+            queue.setProgress(job.id, 0L, 0L)
+            if (attempt < MAX_ATTEMPTS) delay(backoffMs(attempt))
+        }
+        queue.markFailed(job.id, lastError)
+        return JobOutcome.FAILED
+    }
+
+    @Volatile
+    private var lastProgressWrite = 0L
 
     private suspend fun setForegroundSafe(info: ForegroundInfo) {
         try {
@@ -103,24 +178,47 @@ class OfflineDownloadWorker(
     }
 
     companion object {
-        const val UNIQUE_PREFIX = "cupcake_offline_dl_"
-        const val KEY_SHARE_ID = "shareId"
-        const val KEY_PATHS = "paths"
-        const val KEY_DONE_COUNT = "doneCount"
+        const val UNIQUE_WORK = "cupcake_offline_downloads"
         private const val NOTIF_PROGRESS_ID = 44021
+        private const val MAX_ATTEMPTS = 3
+        private const val PROGRESS_WRITE_STEP = 512L * 1024L
+        private const val KEEP_SUCCEEDED_MS = 7L * 24L * 60L * 60L * 1000L
 
+        private fun backoffMs(attempt: Int): Long = when (attempt) {
+            1 -> 2_000L
+            2 -> 8_000L
+            else -> 20_000L
+        }
+
+        /**
+         * Queues comics and starts the queue worker. New work chains behind any
+         * in-flight run (APPEND_OR_REPLACE keeps one active drain at a time).
+         * Safe to call from the UI thread.
+         */
         fun enqueue(context: Context, shareId: Long, relativePaths: List<String>) {
             if (relativePaths.isEmpty()) return
-            val data = Data.Builder()
-                .putLong(KEY_SHARE_ID, shareId)
-                .putStringArray(KEY_PATHS, relativePaths.toTypedArray())
+            val app = context.applicationContext
+            enqueueScope.launch {
+                val added = DownloadQueueRepository(app)
+                    .enqueue(shareId, relativePaths.map { it to it.substringAfterLast('/') })
+                if (added > 0) kick(app)
+            }
+        }
+
+        private val enqueueScope = kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + Dispatchers.IO,
+        )
+
+        /** Starts the queue drain if it is not already running. */
+        fun kick(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
             val request = OneTimeWorkRequestBuilder<OfflineDownloadWorker>()
-                .setInputData(data)
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .setConstraints(constraints)
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(
-                UNIQUE_PREFIX + shareId + "_" + System.currentTimeMillis(),
+            WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
+                UNIQUE_WORK,
                 ExistingWorkPolicy.APPEND_OR_REPLACE,
                 request,
             )

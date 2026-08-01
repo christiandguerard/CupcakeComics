@@ -10,7 +10,6 @@ import com.cupcakecomics.data.pullIdentityKey
 import com.cupcakecomics.settings.CupcakeSettings
 import com.cupcakecomics.smb.ComicFileNames
 import com.cupcakecomics.smb.SmbBrowser
-import com.cupcakecomics.smb.SmbStageManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -173,15 +172,19 @@ class PullListRepository(context: Context) {
     }
 
     private suspend fun autoDownload(keys: List<String>): List<String> {
-        val stage = SmbStageManager(app, connections.credentialStore())
-        val ok = mutableListOf<String>()
+        // Route through the persistent download queue so auto-downloads get the
+        // same retries, monitoring, and failure recovery as manual ones. The
+        // queue worker posts the completion notification itself.
+        val downloads = com.cupcakecomics.downloads.DownloadQueueRepository(app)
+        var queued = 0
         for (key in keys) {
             val row = db.pullComicDao().getByKey(key) ?: continue
-            val share = connections.getSmbShare(row.shareId) ?: continue
-            val result = stage.stage(share, row.relativePath, keepOffline = true, onProgress = null)
-            if (result.isSuccess) ok.add(row.title)
+            queued += downloads.enqueue(row.shareId, listOf(row.relativePath to row.title))
         }
-        return ok
+        if (queued > 0) {
+            com.cupcakecomics.downloads.OfflineDownloadWorker.kick(app)
+        }
+        return emptyList()
     }
 
     private suspend fun baselineFolder(folderId: Long) {
