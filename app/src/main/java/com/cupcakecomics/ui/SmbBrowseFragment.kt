@@ -436,11 +436,7 @@ class SmbBrowseFragment : Fragment() {
             getString(R.string.offline_download_queued, paths.size),
             com.google.android.material.snackbar.Snackbar.LENGTH_LONG,
         ).setAction(R.string.offline_section_view) {
-            (activity as? MainActivity)?.let { main ->
-                val fragment = com.nkanaev.comics.fragment.LibraryFragment()
-                main.pushFragment(fragment)
-                main.window.decorView.post { fragment.scrollToSection("offline") }
-            }
+            (activity as? MainActivity)?.pushFragment(DownloadsFragment())
         }.show()
         (activity as? MainActivity)?.let {
             com.cupcakecomics.notifications.NotifyPermissionPrompt.maybeShow(it)

@@ -45,6 +45,7 @@ public class MainActivity extends AppCompatActivity
     private final static String STATE_INITIAL_SCAN_RAN_ALREADY = "INITIAL_SCAN_FINISHED";
     public static final String EXTRA_OPEN_PULL_LIST = "EXTRA_OPEN_PULL_LIST";
     public static final String EXTRA_NAVIGATE_SECTION = "EXTRA_NAVIGATE_SECTION";
+    public static final String EXTRA_OPEN_DOWNLOADS = "EXTRA_OPEN_DOWNLOADS";
     public static String PACKAGE_NAME;
 
     private DrawerLayout mDrawerLayout;
@@ -169,6 +170,10 @@ public class MainActivity extends AppCompatActivity
 
     private void handleIntentSection(Intent intent) {
         if (intent == null) return;
+        if (intent.getBooleanExtra(EXTRA_OPEN_DOWNLOADS, false)) {
+            pushFragment(new com.cupcakecomics.ui.DownloadsFragment());
+            return;
+        }
         String section = intent.getStringExtra(EXTRA_NAVIGATE_SECTION);
         if (section != null && !section.isEmpty()) {
             LibraryFragment fragment = new LibraryFragment();
@@ -282,6 +287,9 @@ public class MainActivity extends AppCompatActivity
                         break;
                     case R.id.drawer_menu_pull_list:
                         setFragment(new com.cupcakecomics.ui.PullListFragment());
+                        break;
+                    case R.id.drawer_menu_downloads:
+                        setFragment(new com.cupcakecomics.ui.DownloadsFragment());
                         break;
                     case R.id.drawer_menu_request:
                         setFragment(new RequestFragment());

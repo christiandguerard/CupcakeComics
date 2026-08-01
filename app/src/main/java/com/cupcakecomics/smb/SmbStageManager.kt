@@ -118,10 +118,13 @@ class SmbStageManager(
                                     ensureCapacity(keepOffline, total, excludeDir = dir)
                                     if (dir.exists()) dir.deleteRecursively()
                                     dir.mkdirs()
+                                    // Write to a temp name first: a file at the final path is only
+                                    // ever a complete, size-verified download (atomic rename).
+                                    val partFile = File(dir, "$fileName.part")
+                                    var copied = 0L
                                     remoteFile.inputStream.use { input ->
-                                        FileOutputStream(outFile).use { output ->
+                                        FileOutputStream(partFile).use { output ->
                                             val buf = ByteArray(1024 * 256)
-                                            var copied = 0L
                                             var lastPost = 0L
                                             while (true) {
                                                 if (isCancelled()) {
@@ -139,7 +142,18 @@ class SmbStageManager(
                                                     mainHandler.post { onProgress(c, total) }
                                                 }
                                             }
+                                            output.fd.sync()
                                         }
+                                    }
+                                    if (copied != total) {
+                                        runCatching { partFile.delete() }
+                                        throw java.io.IOException(
+                                            "Incomplete download: $copied of $total bytes",
+                                        )
+                                    }
+                                    if (!partFile.renameTo(outFile)) {
+                                        runCatching { partFile.delete() }
+                                        throw java.io.IOException("Could not finalize download")
                                     }
                                 }
                             }

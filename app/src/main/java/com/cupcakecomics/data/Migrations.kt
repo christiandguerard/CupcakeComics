@@ -32,5 +32,32 @@ object CupcakeMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_7_8)
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `download_jobs` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `shareId` INTEGER NOT NULL,
+                    `relativePath` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `sourceKey` TEXT NOT NULL,
+                    `status` TEXT NOT NULL,
+                    `bytesDone` INTEGER NOT NULL,
+                    `bytesTotal` INTEGER NOT NULL,
+                    `error` TEXT,
+                    `attempts` INTEGER NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    `updatedAt` INTEGER NOT NULL
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_download_jobs_sourceKey` " +
+                    "ON `download_jobs` (`sourceKey`)",
+            )
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_7_8, MIGRATION_8_9)
 }

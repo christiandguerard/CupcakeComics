@@ -141,6 +141,49 @@ object CupcakeNotifications {
         NotificationManagerCompat.from(app).notify(NOTIF_DOWNLOADS, builder.build())
     }
 
+    /**
+     * Queue drain finished: success-only falls back to [onDownloadsComplete];
+     * any failures produce an actionable notification that opens the Downloads
+     * screen so jobs can be retried.
+     */
+    @JvmStatic
+    fun onDownloadsFinished(context: Context, okTitles: List<String>, failedCount: Int) {
+        if (failedCount <= 0) {
+            onDownloadsComplete(context, okTitles)
+            return
+        }
+        val app = context.applicationContext
+        val settings = CupcakeSettings(app)
+        if (!settings.notifyDownloads) return
+        if (!areNotificationsAllowed(app)) return
+        ensureChannels(app)
+        if (settings.quietHoursEnabled && isInQuietHours(settings)) return
+        val open = android.content.Intent(app, MainActivity::class.java).apply {
+            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_OPEN_DOWNLOADS, true)
+        }
+        val pending = PendingIntent.getActivity(
+            app, 2, open,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val title = app.getString(R.string.downloads_notify_failed_title, failedCount)
+        val body = if (okTitles.isEmpty()) {
+            app.getString(R.string.downloads_notify_failed_body_none, failedCount)
+        } else {
+            app.getString(R.string.downloads_notify_failed_body, okTitles.size, failedCount)
+        }
+        val builder = NotificationCompat.Builder(app, CHANNEL_DOWNLOADS)
+            .setSmallIcon(R.drawable.ic_download_18)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(pending)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        NotificationManagerCompat.from(app).notify(NOTIF_DOWNLOADS, builder.build())
+    }
+
     /** Flush buffered Pull List alerts if not in quiet hours. */
     @JvmStatic
     fun flushPendingPullList(context: Context) {

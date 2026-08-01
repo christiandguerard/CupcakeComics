@@ -16,8 +16,9 @@ import androidx.room.RoomDatabase
         ReminderEntity::class,
         LocalFileEntity::class,
         DailyReadingProgressEntity::class,
+        DownloadJobEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 @androidx.room.TypeConverters(ReminderConverters::class)
@@ -31,6 +32,7 @@ abstract class CupcakeDatabase : RoomDatabase() {
     abstract fun reminderDao(): ReminderDao
     abstract fun localFileDao(): LocalFileDao
     abstract fun dailyReadingProgressDao(): DailyReadingProgressDao
+    abstract fun downloadJobDao(): DownloadJobDao
 
     companion object {
         @Volatile private var instance: CupcakeDatabase? = null

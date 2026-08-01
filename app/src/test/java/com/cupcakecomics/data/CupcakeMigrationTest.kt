@@ -37,7 +37,7 @@ class CupcakeMigrationTest {
     }
 
     @Test
-    fun `migration 7 to 8 preserves user data and passes Room validation`() = runBlocking {
+    fun `migration 7 to latest preserves user data and passes Room validation`() = runBlocking {
         val db = Room.databaseBuilder(
             RuntimeEnvironment.getApplication(),
             CupcakeDatabase::class.java,
@@ -56,11 +56,11 @@ class CupcakeMigrationTest {
         assertEquals("smb:1:/saga.cbz", book.identityKey)
         assertEquals(7, book.trackedPage)
         assertEquals(20, book.hourOfDay)
-        // New columns get safe defaults on existing rows.
+        // v8 columns get safe defaults on existing rows.
         assertEquals(0, book.dailyPageGoal)
         assertTrue(book.notifyEnabled)
 
-        // The new table exists and works.
+        // The v8 table exists and works.
         db.dailyReadingProgressDao().upsert(
             DailyReadingProgressEntity("smb:1:/saga.cbz", "2026-07-31", pagesRead = 3, goalMetAt = 0L),
         )
@@ -68,6 +68,19 @@ class CupcakeMigrationTest {
             3,
             db.dailyReadingProgressDao().get("smb:1:/saga.cbz", "2026-07-31")?.pagesRead,
         )
+
+        // The v9 download queue table exists and works.
+        db.downloadJobDao().upsert(
+            DownloadJobEntity(
+                shareId = 1,
+                relativePath = "/saga.cbz",
+                title = "Saga",
+                sourceKey = "smb:1:/saga.cbz",
+                createdAt = 1L,
+                updatedAt = 1L,
+            ),
+        )
+        assertEquals(1, db.downloadJobDao().queuedCount())
         db.close()
     }
 
