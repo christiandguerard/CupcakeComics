@@ -56,7 +56,34 @@ class MigrationPreservationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate8To9AddsDownloadQueue() {
+        val db = helper.createDatabase(TEST_DB_8, 8)
+        db.execSQL(
+            "INSERT INTO daily_reading_progress VALUES ('smb:1:/saga.cbz', '2026-08-01', 4, 0)",
+        )
+        db.close()
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB_8,
+            9,
+            true,
+            CupcakeMigrations.MIGRATION_8_9,
+        )
+        migrated.query("SELECT COUNT(*) FROM download_jobs").use { cursor ->
+            assertEquals(true, cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.query("SELECT pagesRead FROM daily_reading_progress WHERE bookKey = 'smb:1:/saga.cbz'")
+            .use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals(4, cursor.getInt(0))
+            }
+        migrated.close()
+    }
+
     companion object {
         private const val TEST_DB = "cupcake-migration-test"
+        private const val TEST_DB_8 = "cupcake-migration-test-8"
     }
 }
