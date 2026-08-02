@@ -32,6 +32,30 @@ object FeedbackUploader {
     private const val SIDECAR_FILE = "feedback_submitted.json"
     private const val LABEL = "feedback"
 
+    /**
+     * Seeds the feedback upload settings from the token/repo baked into the build
+     * (CI secrets -> BuildConfig) when the user has not configured them manually.
+     * Without this the uploader no-ops forever, because nothing else writes these
+     * settings. Manually entered values always win.
+     */
+    fun ensureSeeded(context: Context) {
+        val settings = CupcakeSettings(context)
+        val token = resolveConfigValue(
+            settings.feedbackGithubToken,
+            com.nkanaev.comics.BuildConfig.FEEDBACK_GITHUB_TOKEN,
+        )
+        if (token.isNotBlank()) settings.feedbackGithubToken = token
+        val repo = resolveConfigValue(
+            settings.feedbackGithubRepo,
+            com.nkanaev.comics.BuildConfig.FEEDBACK_GITHUB_REPO,
+        )
+        if (repo.isNotBlank()) settings.feedbackGithubRepo = repo
+    }
+
+    /** Manually configured value wins; fall back to the build-baked one. */
+    internal fun resolveConfigValue(current: String, baked: String): String =
+        current.trim().ifBlank { baked.trim() }
+
     // ── Data model ──────────────────────────────────────────────────
 
     data class Submission(
@@ -48,21 +72,38 @@ object FeedbackUploader {
      * Attempts to upload one report to GitHub immediately.
      * Call from the UI thread (it launches its own coroutine).
      * On success writes a tracking sidecar so we know it's been sent.
+     * [onResult] fires on the main thread with true on submission, false otherwise.
      */
-    fun uploadReport(context: Context, result: FeedbackResult, title: String) {
+    fun uploadReport(
+        context: Context,
+        result: FeedbackResult,
+        title: String,
+        onResult: ((Boolean) -> Unit)? = null,
+    ) {
+        ensureSeeded(context)
         val settings = CupcakeSettings(context)
         val token = settings.feedbackGithubToken
         val repo = settings.feedbackGithubRepo
-        if (token.isBlank() || repo.isBlank()) return  // not configured
+        if (token.isBlank() || repo.isBlank()) {
+            postResult(onResult, false) // not configured
+            return
+        }
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val issueNumber = postIssue(token, repo, title, result)
                 recordSubmission(context, result.stamp, title, issueNumber, "open")
+                postResult(onResult, true)
             } catch (_: Exception) {
                 // Leave files in place — will retry via WorkManager / manual
+                postResult(onResult, false)
             }
         }
+    }
+
+    private fun postResult(onResult: ((Boolean) -> Unit)?, ok: Boolean) {
+        onResult ?: return
+        android.os.Handler(android.os.Looper.getMainLooper()).post { onResult(ok) }
     }
 
     /**
@@ -209,6 +250,7 @@ object FeedbackUploader {
 
     /** Sync open/closed state from GitHub. */
     fun syncStatus(context: Context) {
+        ensureSeeded(context)
         val settings = CupcakeSettings(context)
         val token = settings.feedbackGithubToken
         val repo = settings.feedbackGithubRepo
