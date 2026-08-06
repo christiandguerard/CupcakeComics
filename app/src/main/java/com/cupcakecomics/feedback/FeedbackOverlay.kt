@@ -133,7 +133,18 @@ object FeedbackOverlay {
                 try {
                     val result = FeedbackCapture.capture(activity, note, hideViews = listOf(fab))
                     try {
-                        FeedbackUploader.uploadReport(activity, result, title) { posted ->
+                        FeedbackUploader.uploadReport(
+                            activity,
+                            result,
+                            title,
+                            onBackfilled = { count ->
+                                Toast.makeText(
+                                    activity,
+                                    activity.getString(R.string.feedback_backfilled_toast, count),
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            },
+                        ) { posted ->
                             val message = if (posted) {
                                 activity.getString(R.string.feedback_submitted_toast)
                             } else {
