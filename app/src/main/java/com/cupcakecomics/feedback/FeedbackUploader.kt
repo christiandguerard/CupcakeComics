@@ -23,6 +23,8 @@ import java.net.URL
  *
  * After FeedbackCapture writes the local files, the app can call [uploadReport]
  * immediately (fire-and-forget) or enqueue via WorkManager for Wi-Fi conditions.
+ * A successful submit also backfills any older reports that never reached
+ * GitHub, deduping against the issues the repo already has.
  *
  * Tracked reports are recorded in a local JSON sidecar so we can
  * distinguish pending / submitted / addressed statuses.
@@ -71,13 +73,17 @@ object FeedbackUploader {
     /**
      * Attempts to upload one report to GitHub immediately.
      * Call from the UI thread (it launches its own coroutine).
-     * On success writes a tracking sidecar so we know it's been sent.
+     * On success writes a tracking sidecar so we know it's been sent, then sweeps
+     * up any older reports that never made it (see [backfillMissedReports]).
      * [onResult] fires on the main thread with true on submission, false otherwise.
+     * [onBackfilled] fires on the main thread with how many older reports were
+     * newly posted by the sweep (only when that count is > 0).
      */
     fun uploadReport(
         context: Context,
         result: FeedbackResult,
         title: String,
+        onBackfilled: ((Int) -> Unit)? = null,
         onResult: ((Boolean) -> Unit)? = null,
     ) {
         ensureSeeded(context)
@@ -91,9 +97,20 @@ object FeedbackUploader {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val issueNumber = postIssue(token, repo, title, result)
-                recordSubmission(context, result.stamp, title, issueNumber, "open")
+                val effectiveTitle = title.ifBlank {
+                    extractTitle(result.markdown) ?: "Feedback: ${result.stamp}"
+                }
+                val issueNumber = postIssue(token, repo, effectiveTitle, result)
+                recordSubmission(context, result.stamp, effectiveTitle, issueNumber, "open")
                 postResult(onResult, true)
+                // Older builds could never reach GitHub, so their reports are still
+                // sitting on disk — sweep them up now that a post succeeded.
+                try {
+                    val uploaded = backfillBlocking(context, token, repo).uploaded
+                    if (uploaded > 0) postResult(onBackfilled, uploaded)
+                } catch (_: Exception) {
+                    // Backfill is best-effort; the files stay put for the next submit.
+                }
             } catch (_: Exception) {
                 // Leave files in place — will retry via WorkManager / manual
                 postResult(onResult, false)
@@ -101,9 +118,9 @@ object FeedbackUploader {
         }
     }
 
-    private fun postResult(onResult: ((Boolean) -> Unit)?, ok: Boolean) {
-        onResult ?: return
-        android.os.Handler(android.os.Looper.getMainLooper()).post { onResult(ok) }
+    private fun <T> postResult(callback: ((T) -> Unit)?, value: T) {
+        callback ?: return
+        android.os.Handler(android.os.Looper.getMainLooper()).post { callback(value) }
     }
 
     /**
@@ -128,6 +145,128 @@ object FeedbackUploader {
         } catch (_: Exception) {
             null
         }
+    }
+
+    // ── Backfill of missed reports ─────────────────────────────────
+
+    /** Outcome of one backfill sweep. */
+    data class BackfillResult(
+        val uploaded: Int,  // newly posted to GitHub
+        val adopted: Int,   // already on GitHub, now tracked locally
+        val failed: Int,    // attempted but still unsent
+    )
+
+    internal data class PendingReport(
+        val stamp: String,
+        val mdFile: File,
+        val pngFile: File?,
+    )
+
+    internal data class RemoteIssue(
+        val number: Int,
+        val state: String,
+        val title: String,
+        val url: String,
+    )
+
+    internal data class BackfillPlan(
+        val toUpload: List<PendingReport>,
+        val toAdopt: List<Pair<PendingReport, RemoteIssue>>,
+    )
+
+    /** Capture stamp embedded in report file names and issue bodies. */
+    private val STAMP_REGEX = Regex("\\d{8}_\\d{6}")
+    private val REPORT_FILE_REGEX = Regex("feedback_(\\d{8}_\\d{6})\\.md")
+
+    /** Stamp from a report file name like `feedback_20260801_153000.md`; null for LATEST.md, the sidecar, PNGs, etc. */
+    internal fun stampFromFileName(name: String): String? =
+        REPORT_FILE_REGEX.matchEntire(name)?.groupValues?.get(1)
+
+    /** Stamps referenced by issue text — the report header, screenshot link and `_File:` line all carry it. */
+    internal fun extractStamps(text: String): List<String> =
+        STAMP_REGEX.findAll(text).map { it.value }.distinct().toList()
+
+    /** Every locally stored report, oldest first, regardless of submission state. */
+    internal fun findPendingReports(dir: File): List<PendingReport> =
+        (dir.listFiles() ?: emptyArray())
+            .mapNotNull { file ->
+                val stamp = stampFromFileName(file.name) ?: return@mapNotNull null
+                PendingReport(
+                    stamp = stamp,
+                    mdFile = file,
+                    pngFile = File(dir, "feedback_$stamp.png").takeIf { it.exists() },
+                )
+            }
+            .sortedBy { it.stamp }
+
+    /**
+     * Splits local reports into those that still need posting and those the repo
+     * already has (submitted from another device, or before local tracking
+     * existed). Reports already in the sidecar are left alone.
+     */
+    internal fun planBackfill(
+        local: List<PendingReport>,
+        sidecarStamps: Set<String>,
+        remote: Map<String, RemoteIssue>,
+    ): BackfillPlan {
+        val toUpload = mutableListOf<PendingReport>()
+        val toAdopt = mutableListOf<Pair<PendingReport, RemoteIssue>>()
+        for (report in local) {
+            if (report.stamp in sidecarStamps) continue
+            val issue = remote[report.stamp]
+            if (issue != null) toAdopt += report to issue else toUpload += report
+        }
+        return BackfillPlan(toUpload, toAdopt)
+    }
+
+    /**
+     * Posts local reports that never became GitHub issues. Reports the repo
+     * already has (matched by the capture stamp in the issue text) are recorded
+     * locally instead of being posted twice. [onDone] fires on the main thread.
+     */
+    fun backfillMissedReports(context: Context, onDone: ((BackfillResult) -> Unit)? = null) {
+        ensureSeeded(context)
+        val settings = CupcakeSettings(context)
+        val token = settings.feedbackGithubToken
+        val repo = settings.feedbackGithubRepo
+        if (token.isBlank() || repo.isBlank()) {
+            postResult(onDone, BackfillResult(0, 0, 0))
+            return
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            val result = try {
+                backfillBlocking(context, token, repo)
+            } catch (_: Exception) {
+                BackfillResult(0, 0, 0)
+            }
+            postResult(onDone, result)
+        }
+    }
+
+    internal fun backfillBlocking(context: Context, token: String, repo: String): BackfillResult {
+        val remote = try {
+            fetchRemoteReports(token, repo)
+        } catch (_: Exception) {
+            // Without the repo listing we can't tell what is already an issue,
+            // so don't risk double-posting — the next submit retries.
+            return BackfillResult(0, 0, 0)
+        }
+        val sidecarStamps = getSubmissions(context).map { it.stamp }.toSet()
+        val plan = planBackfill(findPendingReports(FeedbackCapture.feedbackDir(context)), sidecarStamps, remote)
+
+        plan.toAdopt.forEach { (report, issue) ->
+            recordSubmission(context, report.stamp, issue.title, issue.number, issue.state, issue.url)
+        }
+
+        var uploaded = 0
+        var failed = 0
+        plan.toUpload.forEachIndexed { index, report ->
+            val number = uploadPendingFile(context, token, repo, report.mdFile, report.pngFile, report.stamp)
+            if (number != null) uploaded++ else failed++
+            // Stay well clear of GitHub's secondary rate limits on issue creation.
+            if (index < plan.toUpload.lastIndex) Thread.sleep(500)
+        }
+        return BackfillResult(uploaded, plan.toAdopt.size, failed)
     }
 
     // ── GitHub API ─────────────────────────────────────────────────
@@ -274,8 +413,36 @@ object FeedbackUploader {
         }
     }
 
-    private fun fetchIssueStates(token: String, repo: String, state: String): Map<Int, String> {
-        val result = mutableMapOf<Int, String>()
+    private fun fetchIssueStates(token: String, repo: String, state: String): Map<Int, String> =
+        fetchIssues(token, repo, state, strict = false)
+            .associate { it.getInt("number") to it.getString("state") }
+
+    /** Maps capture stamp → issue for every feedback-labelled issue the repo knows about. */
+    private fun fetchRemoteReports(token: String, repo: String): Map<String, RemoteIssue> {
+        val result = mutableMapOf<String, RemoteIssue>()
+        for (state in listOf("open", "closed")) {
+            for (obj in fetchIssues(token, repo, state, strict = true)) {
+                val title = obj.optString("title", "")
+                val issue = RemoteIssue(
+                    number = obj.getInt("number"),
+                    state = obj.optString("state", state),
+                    title = title,
+                    url = obj.optString("html_url", ""),
+                )
+                extractStamps("$title\n${obj.optString("body", "")}")
+                    .forEach { stamp -> result.putIfAbsent(stamp, issue) }
+            }
+        }
+        return result
+    }
+
+    /**
+     * Pages through the repo's feedback-labelled issues in [state].
+     * In strict mode HTTP errors throw — callers that dedupe against the repo
+     * must not guess. Otherwise the partial result is returned.
+     */
+    private fun fetchIssues(token: String, repo: String, state: String, strict: Boolean): List<JSONObject> {
+        val result = mutableListOf<JSONObject>()
         var page = 1
         while (true) {
             val conn = URL("$API_BASE/repos/$repo/issues?state=$state&labels=$LABEL&per_page=100&page=$page")
@@ -286,14 +453,18 @@ object FeedbackUploader {
             conn.connectTimeout = 10000
             conn.readTimeout = 10000
 
-            if (conn.responseCode !in 200..299) break
+            if (conn.responseCode !in 200..299) {
+                if (strict) throw RuntimeException("GitHub API ${conn.responseCode} listing $state issues")
+                break
+            }
 
             val json = JSONArray(readStream(conn.inputStream))
             if (json.length() == 0) break
 
             for (i in 0 until json.length()) {
                 val obj = json.getJSONObject(i)
-                result[obj.getInt("number")] = obj.getString("state")
+                if (obj.has("pull_request")) continue // the issues endpoint also lists PRs
+                result += obj
             }
 
             // Check for Link header pagination
@@ -305,10 +476,17 @@ object FeedbackUploader {
     }
 
     private fun recordSubmission(context: Context, stamp: String, title: String, issueNumber: Int, state: String) {
+        recordSubmission(context, stamp, title, issueNumber, state, url = "")
+    }
+
+    private fun recordSubmission(context: Context, stamp: String, title: String, issueNumber: Int, state: String, url: String) {
         val subs = getSubmissions(context).toMutableList()
         // Remove any existing entry for same stamp or same issue number
         subs.removeAll { it.stamp == stamp || it.issueNumber == issueNumber }
-        subs.add(Submission(stamp, title, issueNumber, state, "https://github.com/${CupcakeSettings(context).feedbackGithubRepo}/issues/$issueNumber"))
+        val link = url.ifBlank {
+            "https://github.com/${CupcakeSettings(context).feedbackGithubRepo}/issues/$issueNumber"
+        }
+        subs.add(Submission(stamp, title, issueNumber, state, link))
         writeSubmissions(context, subs)
     }
 

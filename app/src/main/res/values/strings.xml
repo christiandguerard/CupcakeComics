@@ -413,6 +413,7 @@
     <string name="feedback_submit">Save report</string>
     <string name="feedback_saved_toast">Feedback saved to %1$s (markdown also on clipboard)</string>
     <string name="feedback_submitted_toast">Feedback posted to GitHub — thank you!</string>
+    <string name="feedback_backfilled_toast">Also posted %1$d earlier report(s) to GitHub</string>
     <string name="feedback_not_posted_toast">Couldn\'t post to GitHub — saved to %1$s instead</string>
     <string name="feedback_failed_toast">Feedback failed: %1$s</string>
     <string name="feedback_enabled_toast">Feedback button on</string>
