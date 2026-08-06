@@ -3,7 +3,7 @@ package com.cupcakecomics.feedback
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.util.Base64
+import android.util.Log
 import com.cupcakecomics.settings.CupcakeSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,7 +12,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
-import java.io.FileInputStream
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -33,6 +32,13 @@ object FeedbackUploader {
     private const val API_BASE = "https://api.github.com"
     private const val SIDECAR_FILE = "feedback_submitted.json"
     private const val LABEL = "feedback"
+    private const val TAG = "FeedbackUploader"
+
+    /** GitHub rejects issue bodies longer than this with a 422. */
+    internal const val GITHUB_BODY_LIMIT = 65536
+
+    /** Reports are capped well under [GITHUB_BODY_LIMIT] to leave room for wrapping. */
+    private const val MAX_REPORT_CHARS = GITHUB_BODY_LIMIT - 512
 
     /**
      * Seeds the feedback upload settings from the token/repo baked into the build
@@ -75,7 +81,8 @@ object FeedbackUploader {
      * Call from the UI thread (it launches its own coroutine).
      * On success writes a tracking sidecar so we know it's been sent, then sweeps
      * up any older reports that never made it (see [backfillMissedReports]).
-     * [onResult] fires on the main thread with true on submission, false otherwise.
+     * [onResult] fires on the main thread with true on submission; on failure,
+     * false plus a short human-readable reason (see [shortReason]).
      * [onBackfilled] fires on the main thread with how many older reports were
      * newly posted by the sweep (only when that count is > 0).
      */
@@ -84,14 +91,14 @@ object FeedbackUploader {
         result: FeedbackResult,
         title: String,
         onBackfilled: ((Int) -> Unit)? = null,
-        onResult: ((Boolean) -> Unit)? = null,
+        onResult: ((Boolean, String?) -> Unit)? = null,
     ) {
         ensureSeeded(context)
         val settings = CupcakeSettings(context)
         val token = settings.feedbackGithubToken
         val repo = settings.feedbackGithubRepo
         if (token.isBlank() || repo.isBlank()) {
-            postResult(onResult, false) // not configured
+            postResult(onResult, false, "not configured")
             return
         }
 
@@ -102,25 +109,45 @@ object FeedbackUploader {
                 }
                 val issueNumber = postIssue(token, repo, effectiveTitle, result)
                 recordSubmission(context, result.stamp, effectiveTitle, issueNumber, "open")
-                postResult(onResult, true)
+                postResult(onResult, true, null)
                 // Older builds could never reach GitHub, so their reports are still
                 // sitting on disk — sweep them up now that a post succeeded.
                 try {
                     val uploaded = backfillBlocking(context, token, repo).uploaded
                     if (uploaded > 0) postResult(onBackfilled, uploaded)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     // Backfill is best-effort; the files stay put for the next submit.
+                    Log.w(TAG, "feedback backfill failed", e)
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Leave files in place — will retry via WorkManager / manual
-                postResult(onResult, false)
+                Log.w(TAG, "feedback upload failed", e)
+                postResult(onResult, false, shortReason(e))
             }
+        }
+    }
+
+    /** Short, toast-safe description of why an upload failed. */
+    internal fun shortReason(t: Throwable): String {
+        Regex("GitHub API (\\d{3})").find(t.message.orEmpty())
+            ?.let { return "HTTP ${it.groupValues[1]}" }
+        return when (t) {
+            is java.net.UnknownHostException,
+            is java.net.ConnectException,
+            is java.net.SocketTimeoutException,
+            -> "no connection"
+            else -> t.javaClass.simpleName.ifBlank { "unknown error" }
         }
     }
 
     private fun <T> postResult(callback: ((T) -> Unit)?, value: T) {
         callback ?: return
         android.os.Handler(android.os.Looper.getMainLooper()).post { callback(value) }
+    }
+
+    private fun postResult(onResult: ((Boolean, String?) -> Unit)?, ok: Boolean, reason: String?) {
+        onResult ?: return
+        android.os.Handler(android.os.Looper.getMainLooper()).post { onResult(ok, reason) }
     }
 
     /**
@@ -132,17 +159,16 @@ object FeedbackUploader {
         token: String,
         repo: String,
         mdFile: File,
-        pngFile: File?,
         stamp: String,
     ): Int? {
         return try {
             val text = mdFile.readText(Charsets.UTF_8)
             val title = extractTitle(text) ?: "Feedback: $stamp"
-            val body = buildIssueBody(text, pngFile)
-            val issueNumber = postIssue(token, repo, title, body)
+            val issueNumber = postIssue(token, repo, title, buildIssueBody(text))
             recordSubmission(context, stamp, title, issueNumber, "open")
             issueNumber
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "failed to upload ${mdFile.name}", e)
             null
         }
     }
@@ -159,7 +185,6 @@ object FeedbackUploader {
     internal data class PendingReport(
         val stamp: String,
         val mdFile: File,
-        val pngFile: File?,
     )
 
     internal data class RemoteIssue(
@@ -178,6 +203,9 @@ object FeedbackUploader {
     private val STAMP_REGEX = Regex("\\d{8}_\\d{6}")
     private val REPORT_FILE_REGEX = Regex("feedback_(\\d{8}_\\d{6})\\.md")
 
+    /** The relative screenshot link FeedbackCapture writes into each report. */
+    private val SCREENSHOT_LINK_REGEX = Regex("!\\[screenshot]\\((feedback_\\d{8}_\\d{6}\\.png)\\)")
+
     /** Stamp from a report file name like `feedback_20260801_153000.md`; null for LATEST.md, the sidecar, PNGs, etc. */
     internal fun stampFromFileName(name: String): String? =
         REPORT_FILE_REGEX.matchEntire(name)?.groupValues?.get(1)
@@ -191,11 +219,7 @@ object FeedbackUploader {
         (dir.listFiles() ?: emptyArray())
             .mapNotNull { file ->
                 val stamp = stampFromFileName(file.name) ?: return@mapNotNull null
-                PendingReport(
-                    stamp = stamp,
-                    mdFile = file,
-                    pngFile = File(dir, "feedback_$stamp.png").takeIf { it.exists() },
-                )
+                PendingReport(stamp = stamp, mdFile = file)
             }
             .sortedBy { it.stamp }
 
@@ -261,7 +285,7 @@ object FeedbackUploader {
         var uploaded = 0
         var failed = 0
         plan.toUpload.forEachIndexed { index, report ->
-            val number = uploadPendingFile(context, token, repo, report.mdFile, report.pngFile, report.stamp)
+            val number = uploadPendingFile(context, token, repo, report.mdFile, report.stamp)
             if (number != null) uploaded++ else failed++
             // Stay well clear of GitHub's secondary rate limits on issue creation.
             if (index < plan.toUpload.lastIndex) Thread.sleep(500)
@@ -299,51 +323,26 @@ object FeedbackUploader {
         return json.getInt("number")
     }
 
-    private fun postIssue(token: String, repo: String, title: String, feedbackResult: FeedbackResult): Int {
-        val body = buildIssueBody(feedbackResult)
-        return postIssue(token, repo, title, body)
-    }
+    private fun postIssue(token: String, repo: String, title: String, feedbackResult: FeedbackResult): Int =
+        postIssue(token, repo, title, buildIssueBody(feedbackResult.markdown))
 
-    private fun buildIssueBody(feedbackResult: FeedbackResult): String {
-        val sb = StringBuilder()
-        sb.appendLine(feedbackResult.markdown)
-
-        // Embed screenshot as base64 data URI
-        val shotFile = feedbackResult.screenshotFile
-        if (shotFile != null && shotFile.exists() && shotFile.length() < 3_000_000) {
-            try {
-                val bytes = FileInputStream(shotFile).use { it.readBytes() }
-                val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-                sb.appendLine()
-                sb.appendLine("## Screenshot (inline)")
-                sb.appendLine()
-                sb.appendLine("![screenshot](data:image/png;base64,$b64)")
-                sb.appendLine()
-            } catch (_: Exception) {
-                // skip screenshot if encoding fails
-            }
+    /**
+     * Issue body for a report. The screenshot is never inlined: GitHub strips
+     * data-URI images from rendered issues, and anything over ~48 KB of image
+     * pushes the body past the 65536-char API limit, failing the whole upload
+     * with a 422. Instead the `![screenshot](...)` link is rewritten to point
+     * at the PNG on the device. Oversized reports are truncated as a last
+     * resort — a trimmed issue beats a rejected one.
+     */
+    internal fun buildIssueBody(text: String): String {
+        val truncated = if (text.length > MAX_REPORT_CHARS) {
+            text.take(MAX_REPORT_CHARS) + "\n\n_(truncated — full report is on the device)_"
+        } else {
+            text
         }
-
-        return sb.toString()
-    }
-
-    private fun buildIssueBody(text: String, pngFile: File?): String {
-        val sb = StringBuilder()
-        sb.appendLine(text)
-
-        if (pngFile != null && pngFile.exists() && pngFile.length() < 3_000_000) {
-            try {
-                val bytes = FileInputStream(pngFile).use { it.readBytes() }
-                val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-                sb.appendLine()
-                sb.appendLine("## Screenshot (inline)")
-                sb.appendLine()
-                sb.appendLine("![screenshot](data:image/png;base64,$b64)")
-                sb.appendLine()
-            } catch (_: Exception) { }
+        return SCREENSHOT_LINK_REGEX.replace(truncated) { m ->
+            "_Screenshot on device: `${m.groupValues[1]}` (Downloads/${FeedbackCapture.DOWNLOADS_FOLDER}/)_"
         }
-
-        return sb.toString()
     }
 
     private fun extractTitle(markdown: String): String? {

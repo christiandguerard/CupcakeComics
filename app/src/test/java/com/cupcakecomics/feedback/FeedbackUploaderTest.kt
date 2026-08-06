@@ -36,6 +36,7 @@ class FeedbackUploaderTest {
         // Unit-test BuildConfig has no baked token, and prefs start empty,
         // so the uploader must short-circuit with a failure result.
         var outcome: Boolean? = null
+        var reason: String? = null
         val result = FeedbackResult(
             stamp = "20260801_000000",
             markdown = "note",
@@ -43,11 +44,13 @@ class FeedbackUploaderTest {
             screenshotFile = null,
             downloadsRelativePath = "CupcakeFeedback/feedback_20260801_000000.md",
         )
-        FeedbackUploader.uploadReport(RuntimeEnvironment.getApplication(), result, "title") {
-            outcome = it
+        FeedbackUploader.uploadReport(RuntimeEnvironment.getApplication(), result, "title") { posted, why ->
+            outcome = posted
+            reason = why
         }
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(false, outcome)
+        assertEquals("not configured", reason)
     }
 
     // ── Backfill helpers ────────────────────────────────────────────
@@ -92,7 +95,7 @@ class FeedbackUploaderTest {
     }
 
     @Test
-    fun `findPendingReports pairs screenshots and sorts chronologically`() {
+    fun `findPendingReports ignores everything but report markdown and sorts chronologically`() {
         val dir = Files.createTempDirectory("feedback").toFile()
         try {
             File(dir, "feedback_20260802_101500.md").writeText("newer")
@@ -105,8 +108,7 @@ class FeedbackUploaderTest {
             val reports = FeedbackUploader.findPendingReports(dir)
 
             assertEquals(listOf("20260801_101500", "20260802_101500"), reports.map { it.stamp })
-            assertEquals(File(dir, "feedback_20260801_101500.png"), reports[0].pngFile)
-            assertNull(reports[1].pngFile)
+            assertEquals(File(dir, "feedback_20260801_101500.md"), reports[0].mdFile)
         } finally {
             dir.deleteRecursively()
         }
@@ -118,7 +120,7 @@ class FeedbackUploaderTest {
         try {
             fun report(stamp: String): FeedbackUploader.PendingReport {
                 val md = File(dir, "feedback_$stamp.md").apply { writeText("# report") }
-                return FeedbackUploader.PendingReport(stamp, md, null)
+                return FeedbackUploader.PendingReport(stamp, md)
             }
             val tracked = report("20260801_000001")
             val onGithub = report("20260801_000002")
@@ -147,5 +149,48 @@ class FeedbackUploaderTest {
         FeedbackUploader.backfillMissedReports(RuntimeEnvironment.getApplication()) { outcome = it }
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(FeedbackUploader.BackfillResult(0, 0, 0), outcome)
+    }
+
+    // ── Issue body construction ─────────────────────────────────────
+
+    @Test
+    fun `buildIssueBody rewrites the screenshot link to the on-device file`() {
+        val md = """
+            # Cupcake Comics feedback — 20260801_101500
+
+            ## Screenshot
+
+            ![screenshot](feedback_20260801_101500.png)
+
+            _File: `feedback_20260801_101500.png`_
+        """.trimIndent()
+
+        val body = FeedbackUploader.buildIssueBody(md)
+
+        assertEquals(-1, body.indexOf("![screenshot]("))
+        assertEquals(true, body.contains("_Screenshot on device: `feedback_20260801_101500.png`"))
+        // The _File: line stays untouched so the stamp is still matchable.
+        assertEquals(true, body.contains("_File: `feedback_20260801_101500.png`_"))
+    }
+
+    @Test
+    fun `buildIssueBody never exceeds the GitHub body limit`() {
+        val huge = "x".repeat(FeedbackUploader.GITHUB_BODY_LIMIT * 4)
+
+        val body = FeedbackUploader.buildIssueBody(huge)
+
+        assertEquals(true, body.length <= FeedbackUploader.GITHUB_BODY_LIMIT)
+        assertEquals(true, body.contains("truncated"))
+    }
+
+    @Test
+    fun `shortReason extracts HTTP codes and maps network failures`() {
+        assertEquals(
+            "HTTP 422",
+            FeedbackUploader.shortReason(RuntimeException("GitHub API 422: {\"message\":\"Validation Failed\"}")),
+        )
+        assertEquals("no connection", FeedbackUploader.shortReason(java.net.UnknownHostException("api.github.com")))
+        assertEquals("no connection", FeedbackUploader.shortReason(java.net.SocketTimeoutException("timeout")))
+        assertEquals("IllegalStateException", FeedbackUploader.shortReason(IllegalStateException("boom")))
     }
 }

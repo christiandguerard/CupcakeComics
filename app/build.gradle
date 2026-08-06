@@ -27,7 +27,7 @@ android {
         vectorDrawables.useSupportLibrary = true
 
         // Clean Cupcake version — do not derive from Bubble2 git tags (they embed movie-quote titles).
-        versionName = "0.4.2"
+        versionName = "0.4.3"
         // In CI: use GITHUB_RUN_NUMBER or git commit count for sequential versionCode
         // Local builds default to 1
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: 

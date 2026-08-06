@@ -144,24 +144,26 @@ object FeedbackOverlay {
                                     Toast.LENGTH_LONG,
                                 ).show()
                             },
-                        ) { posted ->
+                        ) { posted, reason ->
                             val message = if (posted) {
                                 activity.getString(R.string.feedback_submitted_toast)
                             } else {
                                 activity.getString(
                                     R.string.feedback_not_posted_toast,
                                     result.downloadsRelativePath,
+                                    reason ?: "unknown error",
                                 )
                             }
                             Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
                         }
-                    } catch (_: Throwable) {
+                    } catch (t: Throwable) {
                         // Upload failure is non-fatal — files are saved locally
                         Toast.makeText(
                             activity,
                             activity.getString(
                                 R.string.feedback_not_posted_toast,
                                 result.downloadsRelativePath,
+                                t.message ?: "unexpected error",
                             ),
                             Toast.LENGTH_LONG,
                         ).show()
