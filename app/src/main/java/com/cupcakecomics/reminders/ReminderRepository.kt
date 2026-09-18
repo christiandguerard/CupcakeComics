@@ -177,8 +177,12 @@ class ReminderRepository(context: Context) {
         return count
     }
 
-    /** Finished = resume page reached the final page. [resumePage] avoids a double lookup. */
-    suspend fun isBookFinished(entity: ReminderEntity, resumePage: Int = resolveResumePage(entity)): Boolean {
+    /** Finished = resume page reached the final page. */
+    suspend fun isBookFinished(entity: ReminderEntity): Boolean =
+        isBookFinished(entity, resolveResumePage(entity))
+
+    /** [resumePage] overload avoids a double lookup when the caller already resolved it. */
+    suspend fun isBookFinished(entity: ReminderEntity, resumePage: Int): Boolean {
         if (entity.type != ReminderType.BOOK) return false
         val total = resolveTotalPages(entity)
         return total > 0 && resumePage >= total

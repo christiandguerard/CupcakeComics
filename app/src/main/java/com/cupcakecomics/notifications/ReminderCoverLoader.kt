@@ -19,7 +19,7 @@ import java.io.File
  */
 object ReminderCoverLoader {
 
-    fun load(context: Context, reminder: ReminderEntity): Bitmap? {
+    suspend fun load(context: Context, reminder: ReminderEntity): Bitmap? {
         val app = context.applicationContext
         val path = localCoverPath(app, reminder) ?: return null
         val cache = Utils.getCoverCacheFileForPath(path)
@@ -31,7 +31,7 @@ object ReminderCoverLoader {
         return runCatching { BitmapFactory.decodeFile(cache.absolutePath) }.getOrNull()
     }
 
-    private fun localCoverPath(context: Context, reminder: ReminderEntity): String? =
+    private suspend fun localCoverPath(context: Context, reminder: ReminderEntity): String? =
         when (reminder.bookSource) {
             ReminderBookSource.LOCAL ->
                 reminder.localPath?.takeIf { it.isNotBlank() && !it.startsWith("content://") }
