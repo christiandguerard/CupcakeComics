@@ -18,7 +18,9 @@ import kotlinx.coroutines.launch
  * Shared multi-select ActionMode for cover-tile library sections. Owns the
  * selection set and the comic_selection menu actions (mark read/unread via
  * ReadStatusRepository, delete, export read history, select all); sections
- * provide data accessors and the delete side effect.
+ * provide data accessors and the delete side effect. Sections that support
+ * in-place file renames pass [renameSupport]; the action appears only when
+ * exactly one item is selected.
  */
 class CoverTileSelectionController<T>(
     private val context: Context,
@@ -32,7 +34,13 @@ class CoverTileSelectionController<T>(
     private val deleteToastRes: Int,
     private val onDelete: suspend (List<T>) -> Unit,
     private val onStateChanged: () -> Unit,
+    private val renameSupport: RenameSupport<T>? = null,
 ) {
+    /** Rename wiring for a section: current file name and the rename side effect. */
+    class RenameSupport<T>(
+        val currentNameOf: (T) -> String,
+        val onRename: suspend (T, String) -> String,
+    )
     private var actionMode: ActionMode? = null
     val selected = linkedSetOf<Long>()
     var selecting = false
@@ -63,6 +71,12 @@ class CoverTileSelectionController<T>(
     /** Keep the ActionMode title in sync when the underlying list changes. */
     fun syncTitle() {
         actionMode?.title = context.getString(R.string.selection_count, selected.size)
+        syncRenameVisibility()
+    }
+
+    private fun syncRenameVisibility() {
+        val item = actionMode?.menu?.findItem(R.id.action_rename) ?: return
+        item.isVisible = renameSupport != null && selected.size == 1
     }
 
     private val callback = object : ActionMode.Callback {
@@ -99,6 +113,14 @@ class CoverTileSelectionController<T>(
                         ).show()
                     }
                     mode.finish()
+                    return true
+                }
+                R.id.action_rename -> {
+                    val support = renameSupport
+                    val target = picked.singleOrNull()
+                    if (support != null && target != null) {
+                        showRenameDialog(mode, support, target)
+                    }
                     return true
                 }
                 R.id.action_delete_offline -> {
@@ -144,5 +166,47 @@ class CoverTileSelectionController<T>(
             actionMode = null
             onStateChanged()
         }
+    }
+
+    private fun showRenameDialog(mode: ActionMode, support: RenameSupport<T>, target: T) {
+        val currentName = support.currentNameOf(target)
+        val input = android.widget.EditText(context).apply {
+            setText(currentName.substringBeforeLast('.'))
+            setSelectAllOnFocus(true)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            val pad = (20 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad / 2, pad, 0)
+        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle(R.string.rename_dialog_title)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val requested = input.text.toString()
+                scope.launch {
+                    runCatching {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            support.onRename(target, requested)
+                        }
+                    }.onSuccess { newName ->
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.rename_success_toast, newName),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }.onFailure { error ->
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.rename_failed_toast,
+                                error.message ?: error.javaClass.simpleName,
+                            ),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+                mode.finish()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 }

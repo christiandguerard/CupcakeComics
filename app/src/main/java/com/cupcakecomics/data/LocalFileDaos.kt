@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -22,6 +23,9 @@ interface LocalFileDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: LocalFileEntity): Long
+
+    @Update
+    suspend fun update(entity: LocalFileEntity)
 
     @Query("DELETE FROM local_files WHERE id IN (:ids)")
     suspend fun deleteIds(ids: List<Long>)

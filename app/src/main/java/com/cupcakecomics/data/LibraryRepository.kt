@@ -167,6 +167,94 @@ class LibraryRepository(context: Context) {
         db.localFileDao().deleteIds(ids)
     }
 
+    /**
+     * Renames a local book's file in place (same app-private directory), then moves
+     * every piece of path-keyed state over: cover cache, last-page progress, read
+     * marks, and book reminders. [requestedName] may omit the extension — the
+     * current one is preserved. Returns the new display name (with extension).
+     */
+    suspend fun renameLocalFile(id: Long, requestedName: String): String = withContext(Dispatchers.IO) {
+        val entity = db.localFileDao().getById(id)
+            ?: throw IllegalArgumentException("Book not found")
+        val renamed = renameFileInPlace(File(entity.localPath), requestedName)
+        db.localFileDao().update(
+            entity.copy(title = renamed.displayName, localPath = renamed.file.absolutePath),
+        )
+        migratePathKeyedState(
+            oldPath = entity.localPath,
+            newPath = renamed.file.absolutePath,
+            identityKey = entity.sourceKey,
+            newTitle = renamed.displayName,
+        )
+        renamed.displayName
+    }
+
+    /** Offline download counterpart of [renameLocalFile]; the SMB identity key is stable. */
+    suspend fun renameOfflineComic(id: Long, requestedName: String): String = withContext(Dispatchers.IO) {
+        val entity = db.offlineComicDao().getById(id)
+            ?: throw IllegalArgumentException("Book not found")
+        val renamed = renameFileInPlace(File(entity.localPath), requestedName)
+        db.offlineComicDao().update(
+            entity.copy(title = renamed.displayName, localPath = renamed.file.absolutePath),
+        )
+        migratePathKeyedState(
+            oldPath = entity.localPath,
+            newPath = renamed.file.absolutePath,
+            identityKey = entity.sourceKey,
+            newTitle = renamed.displayName,
+        )
+        renamed.displayName
+    }
+
+    private data class RenamedFile(val file: File, val displayName: String)
+
+    private fun renameFileInPlace(current: File, requestedName: String): RenamedFile {
+        if (!current.isFile) throw IllegalStateException("File is missing")
+        val extension = current.name.substringAfterLast('.', "")
+        val requestedBase = requestedName.trim()
+            .substringAfterLast('/')
+            .substringAfterLast('\\')
+            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            .trim()
+            // A typed comic extension is dropped — the file's real one always wins.
+            .replace(
+                Regex(
+                    "\\.(cbz|cbr|cb7|cbt|zip|rar|7z|pdf|tar|tgz|tbz2?|txz|tlz|tbr|tzs(?:t|td)?)$",
+                    RegexOption.IGNORE_CASE,
+                ),
+                "",
+            )
+            .trim()
+        if (requestedBase.isBlank()) throw IllegalArgumentException("Enter a valid name")
+        val newName = if (extension.isBlank()) requestedBase else "$requestedBase.$extension"
+        if (newName == current.name) return RenamedFile(current, newName)
+        val dest = File(current.parentFile, newName)
+        if (dest.exists()) throw IllegalStateException("A file with that name already exists")
+        if (!current.renameTo(dest)) throw IllegalStateException("Rename failed")
+        // Cover cache is keyed by absolute path — move it so the cover survives.
+        val oldCover = Utils.getCoverCacheFileForPath(current.absolutePath)
+        if (oldCover.isFile) {
+            oldCover.renameTo(Utils.getCoverCacheFileForPath(dest.absolutePath))
+        }
+        return RenamedFile(dest, newName)
+    }
+
+    private suspend fun migratePathKeyedState(
+        oldPath: String,
+        newPath: String,
+        identityKey: String,
+        newTitle: String,
+    ) {
+        com.cupcakecomics.reader.settings.ReaderSettingsStore(appContext)
+            .migrateLastPageKey("file:$oldPath", "file:$newPath")
+        if (identityKey.isNotBlank()) {
+            db.readMarkDao().updateDisplay(identityKey, newTitle, newPath)
+            db.reminderDao().updateTitleForIdentity(identityKey, newTitle)
+        }
+        db.reminderDao().updateLocalPath(oldPath, newPath)
+        db.reminderDao().updateTitleForLocalPath(newPath, newTitle)
+    }
+
     private fun resolveDisplayName(uri: Uri): String {
         val fromQuery = runCatching {
             appContext.contentResolver.query(uri, null, null, null, null)?.use { cursor ->

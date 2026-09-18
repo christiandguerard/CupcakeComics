@@ -10,6 +10,11 @@
             android:title="@string/action_mark_unread"
             app:showAsAction="never"/>
     <item
+            android:id="@+id/action_rename"
+            android:title="@string/action_rename"
+            android:visible="false"
+            app:showAsAction="never"/>
+    <item
             android:id="@+id/action_download_offline"
             android:title="@string/action_download_offline"
             app:showAsAction="never"/>

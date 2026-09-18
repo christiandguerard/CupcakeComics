@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -22,6 +23,9 @@ interface OfflineComicDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: OfflineComicEntity): Long
+
+    @Update
+    suspend fun update(entity: OfflineComicEntity)
 
     @Query("DELETE FROM offline_comics WHERE id IN (:ids)")
     suspend fun deleteIds(ids: List<Long>)
@@ -46,4 +50,7 @@ interface ReadMarkDao {
 
     @Query("DELETE FROM read_marks WHERE identityKey IN (:keys)")
     suspend fun deleteKeys(keys: List<String>)
+
+    @Query("UPDATE read_marks SET displayName = :displayName, sourceDetail = :sourceDetail WHERE identityKey = :identityKey")
+    suspend fun updateDisplay(identityKey: String, displayName: String, sourceDetail: String)
 }

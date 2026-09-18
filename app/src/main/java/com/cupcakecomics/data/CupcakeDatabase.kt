@@ -53,5 +53,14 @@ abstract class CupcakeDatabase : RoomDatabase() {
                 }
             }
         }
+
+        /** Drops the cached singleton so each Robolectric sandbox starts empty. */
+        @androidx.annotation.VisibleForTesting
+        fun resetForTesting() {
+            synchronized(this) {
+                instance?.close()
+                instance = null
+            }
+        }
     }
 }

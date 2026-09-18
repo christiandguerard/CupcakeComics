@@ -169,6 +169,17 @@ class ReaderSettingsStore(context: Context) {
         prefs.edit().putInt(lastPageKey(identityKey), pageOneBased).apply()
     }
 
+    /** Moves a stored last page to a new key (e.g. after a file rename). */
+    fun migrateLastPageKey(oldKey: String?, newKey: String?) {
+        if (oldKey.isNullOrBlank() || newKey.isNullOrBlank() || oldKey == newKey) return
+        val page = getLastPage(oldKey)
+        if (page <= 0) return
+        prefs.edit()
+            .putInt(lastPageKey(newKey), page)
+            .remove(lastPageKey(oldKey))
+            .apply()
+    }
+
     private fun bookmarkKey(identityKey: String) = "bookmarks:${identityKey.hashCode()}"
 
     private fun lastPageKey(identityKey: String) = "last_page:${identityKey.hashCode()}"

@@ -101,6 +101,10 @@ class OfflineLibraryController(
             repo.deleteOffline(picked.map { it.id })
         },
         onStateChanged = { submitList() },
+        renameSupport = CoverTileSelectionController.RenameSupport(
+            currentNameOf = { it.title },
+            onRename = { item, requested -> repo.renameOfflineComic(item.id, requested) },
+        ),
     )
 
     private val chrome = CollapsibleSectionChrome(

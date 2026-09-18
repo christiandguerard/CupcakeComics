@@ -91,6 +91,10 @@ class LocalFilesLibraryController(
             repo.deleteLocalFiles(picked.map { it.id })
         },
         onStateChanged = { submitList() },
+        renameSupport = CoverTileSelectionController.RenameSupport(
+            currentNameOf = { it.title },
+            onRename = { item, requested -> repo.renameLocalFile(item.id, requested) },
+        ),
     )
 
     private val chrome = CollapsibleSectionChrome(

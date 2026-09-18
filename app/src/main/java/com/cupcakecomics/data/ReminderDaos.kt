@@ -91,6 +91,15 @@ interface ReminderDao {
         """,
     )
     suspend fun getEnabledGoalReminders(minGoal: Int): List<ReminderEntity>
+
+    @Query("UPDATE reminders SET localPath = :newPath WHERE type = 'BOOK' AND localPath = :oldPath")
+    suspend fun updateLocalPath(oldPath: String, newPath: String)
+
+    @Query("UPDATE reminders SET title = :newTitle WHERE type = 'BOOK' AND identityKey = :identityKey")
+    suspend fun updateTitleForIdentity(identityKey: String, newTitle: String)
+
+    @Query("UPDATE reminders SET title = :newTitle WHERE type = 'BOOK' AND localPath = :path")
+    suspend fun updateTitleForLocalPath(path: String, newTitle: String)
 }
 
 @Dao
