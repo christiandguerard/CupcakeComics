@@ -96,6 +96,7 @@
     <string name="action_mark_unread">Mark as unread</string>
     <string name="action_rename">Rename</string>
     <string name="rename_dialog_title">Rename book</string>
+    <string name="rename_name_hint">Book name</string>
     <string name="rename_success_toast">Renamed to %1$s</string>
     <string name="rename_failed_toast">Rename failed: %1$s</string>
     <string name="action_download_offline">Download for offline</string>
@@ -464,6 +465,9 @@
     <string name="reminders_empty">No reminders yet. Add a Pull List nudge or a book reminder below.</string>
     <string name="reminders_add_pull">Add Pull List reminder</string>
     <string name="reminders_add_book">Add book reminder</string>
+    <string name="reminders_test_notification">Send test notification</string>
+    <string name="reminders_test_sent_toast">Test notification sent</string>
+    <string name="reminders_test_blocked_toast">Notifications are off — enable them in system settings first</string>
     <string name="reminders_edit_pull">Pull List reminder</string>
     <string name="reminders_edit_book">Book reminder</string>
     <string name="reminders_delete">Delete reminder</string>

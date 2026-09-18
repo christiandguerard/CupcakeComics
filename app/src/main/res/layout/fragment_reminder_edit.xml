@@ -58,7 +58,11 @@
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
                         android:inputType="number"
+                        android:imeOptions="actionDone"
+                        android:selectAllOnFocus="true"
+                        android:maxLines="1"
                         android:maxLength="3"
                         android:hint="0"
                         android:importantForAutofill="no"/>
@@ -67,7 +71,8 @@
                         android:id="@+id/reminder_edit_goal_cadence"
                         android:layout_width="0dp"
                         android:layout_weight="1"
-                        android:layout_height="wrap_content"/>
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"/>
             </LinearLayout>
 
             <TextView

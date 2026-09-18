@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.cupcakecomics.data.ReminderEntity
 import com.cupcakecomics.data.ReminderType
+import com.cupcakecomics.notifications.CupcakeNotifications
 import com.cupcakecomics.reminders.ReminderFormat
 import com.cupcakecomics.reminders.ReminderRepository
 import com.nkanaev.comics.R
@@ -58,6 +59,9 @@ class RemindersFragment : Fragment() {
                 ReminderEditFragment.newInstance(ReminderType.BOOK, 0L),
             )
         }
+        view.findViewById<Button>(R.id.reminders_test_notify).setOnClickListener {
+            sendTestNotification()
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             repo.observeAll().collectLatest { items ->
@@ -70,6 +74,45 @@ class RemindersFragment : Fragment() {
 
     private fun openEdit(item: ReminderEntity) {
         (activity as MainActivity).pushFragment(ReminderEditFragment.newInstance(item.type, item.id))
+    }
+
+    /**
+     * Posts a real preview of a book reminder notification. Uses the first enabled
+     * book reminder so the cover, short title, and pages-left copy match what the
+     * scheduled reminder will send; falls back to a sample when none exists yet.
+     */
+    private fun sendTestNotification() {
+        val context = requireContext()
+        if (!CupcakeNotifications.areNotificationsAllowed(context)) {
+            Toast.makeText(context, R.string.reminders_test_blocked_toast, Toast.LENGTH_LONG).show()
+            return
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val books = repo.getAll()
+                .filter { it.type == ReminderType.BOOK && it.title.isNotBlank() }
+            val reminder = books.firstOrNull { it.enabled } ?: books.firstOrNull()
+            if (reminder != null) {
+                val page = repo.resolveResumePage(reminder)
+                val goalRead = if (reminder.hasGoal()) repo.pagesReadInWindow(reminder) else null
+                CupcakeNotifications.notifyBookReminder(
+                    context, reminder, page, goalRead, preview = true,
+                )
+            } else {
+                CupcakeNotifications.notifyBookReminder(
+                    context,
+                    reminder = ReminderEntity(
+                        type = ReminderType.BOOK,
+                        title = "Absolute Batman 022 (2024) (Digital).cbz",
+                        goalPages = 12,
+                        goalCadence = com.cupcakecomics.data.ReminderFrequency.WEEKLY,
+                    ),
+                    page = 6,
+                    goalPagesRead = 7,
+                    preview = true,
+                )
+            }
+            Toast.makeText(context, R.string.reminders_test_sent_toast, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun confirmDelete(item: ReminderEntity) {

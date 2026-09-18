@@ -170,43 +170,72 @@ class CoverTileSelectionController<T>(
 
     private fun showRenameDialog(mode: ActionMode, support: RenameSupport<T>, target: T) {
         val currentName = support.currentNameOf(target)
+        val density = context.resources.displayMetrics.density
         val input = android.widget.EditText(context).apply {
             setText(currentName.substringBeforeLast('.'))
             setSelectAllOnFocus(true)
             inputType = android.text.InputType.TYPE_CLASS_TEXT
-            val pad = (20 * resources.displayMetrics.density).toInt()
-            setPadding(pad, pad / 2, pad, 0)
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+            maxLines = 1
+            setSingleLine(true)
+            setHint(R.string.rename_name_hint)
         }
-        androidx.appcompat.app.AlertDialog.Builder(context)
+        // A bare EditText as the dialog view renders edge-to-edge; the wrapper
+        // restores the standard dialog content margins.
+        val container = android.widget.FrameLayout(context).apply {
+            val horizontal = (24 * density).toInt()
+            setPadding(horizontal, (8 * density).toInt(), horizontal, 0)
+            addView(
+                input,
+                android.widget.FrameLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+        }
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(context)
             .setTitle(R.string.rename_dialog_title)
-            .setView(input)
+            .setView(container)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                val requested = input.text.toString()
-                scope.launch {
-                    runCatching {
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            support.onRename(target, requested)
-                        }
-                    }.onSuccess { newName ->
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.rename_success_toast, newName),
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }.onFailure { error ->
-                        Toast.makeText(
-                            context,
-                            context.getString(
-                                R.string.rename_failed_toast,
-                                error.message ?: error.javaClass.simpleName,
-                            ),
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                }
-                mode.finish()
+                renameFromDialog(mode, support, target, input.text.toString())
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+        // Show the keyboard with the name pre-selected so renaming starts typing.
+        dialog.window?.setSoftInputMode(
+            android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE,
+        )
+        dialog.show()
+    }
+
+    private fun renameFromDialog(
+        mode: ActionMode,
+        support: RenameSupport<T>,
+        target: T,
+        requested: String,
+    ) {
+        scope.launch {
+            runCatching {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    support.onRename(target, requested)
+                }
+            }.onSuccess { newName ->
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.rename_success_toast, newName),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }.onFailure { error ->
+                Toast.makeText(
+                    context,
+                    context.getString(
+                        R.string.rename_failed_toast,
+                        error.message ?: error.javaClass.simpleName,
+                    ),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+        mode.finish()
     }
 }

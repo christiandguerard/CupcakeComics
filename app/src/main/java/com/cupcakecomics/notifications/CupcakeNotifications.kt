@@ -30,6 +30,7 @@ object CupcakeNotifications {
     private const val NOTIF_DOWNLOADS = 1002
     private const val NOTIF_REMINDER_PULL_BASE = 1100
     private const val NOTIF_REMINDER_BOOK_BASE = 120_000
+    private const val NOTIF_REMINDER_PREVIEW = 119_999
     private const val PREFS = "cupcake_notify_buffer"
     private const val KEY_PENDING_TITLES = "pending_pull_titles"
     private const val MAX_LINES = 5
@@ -342,14 +343,20 @@ object CupcakeNotifications {
         reminder: com.cupcakecomics.data.ReminderEntity,
         page: Int,
         goalPagesRead: Int?,
+        preview: Boolean = false,
     ) {
         if (!areNotificationsAllowed(context)) return
         ensureChannels(context)
         val app = context.applicationContext
         val settings = CupcakeSettings(app)
         val open = com.cupcakecomics.reminders.ReminderOpenHelper.readerIntent(app, reminder, page)
-            ?: return
-        val notifId = bookNotifId(reminder.id)
+            ?: if (preview) {
+                // Sample previews may reference no real book — land on the app instead.
+                Intent(app, MainActivity::class.java)
+            } else {
+                return
+            }
+        val notifId = if (preview) NOTIF_REMINDER_PREVIEW else bookNotifId(reminder.id)
         val pending = PendingIntent.getActivity(
             app, notifId, open,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
