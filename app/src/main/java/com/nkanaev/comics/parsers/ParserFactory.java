@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 public class ParserFactory {
 
     public static enum Type {
-        ZIP, RAR, SEVEN_Z, TAR, PDF, DIR,
+        ZIP, RAR, SEVEN_Z, TAR, PDF, DIR, EPUB,
         // compressed tar streams
         TAR_BROTLI, TAR_BZIP2, TAR_GZIP, TAR_LZMA, TAR_XZ, TAR_ZSTD
     };
@@ -122,6 +122,11 @@ public class ParserFactory {
 
         InputStream is = null;
         Type type = null;
+
+        // EPUBs are ZIPs — the extension wins over the zip signature.
+        if (file.isFile() && Utils.isEpub(file.getName())) {
+            return EpubParser.class;
+        }
 
         // detect folder
         if (file.isDirectory()) {

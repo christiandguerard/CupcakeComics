@@ -331,6 +331,7 @@ public class LibraryFragment extends Fragment
                             "application/x-cbr",
                             "application/pdf",
                             "application/x-pdf",
+                            "application/epub+zip",
                             "*/*"
                     });
                     return kotlin.Unit.INSTANCE;

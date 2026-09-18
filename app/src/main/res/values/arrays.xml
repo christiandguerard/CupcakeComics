@@ -79,6 +79,12 @@
         <item>Daily</item>
         <item>Weekly</item>
         <item>Monthly</item>
+        <item>Every X days</item>
+    </string-array>
+
+    <string-array name="reminder_shift_labels">
+        <item>Move it earlier</item>
+        <item>Move it later</item>
     </string-array>
 
     <string-array name="reminder_goal_cadence_labels">

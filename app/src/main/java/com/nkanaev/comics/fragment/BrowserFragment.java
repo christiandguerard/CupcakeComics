@@ -221,6 +221,8 @@ public class BrowserFragment extends Fragment
         view.setImageResource(R.drawable.ic_text_image_document_24);
         if (Utils.isPdf(name)) {
             colorRes = R.color.circle_blue;
+        } else if (Utils.isEpub(name)) {
+            colorRes = R.color.circle_teal;
         } else if (Utils.isZip(name)) {
             colorRes = R.color.circle_green;
         } else if (Utils.isRar(name)) {

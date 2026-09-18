@@ -64,9 +64,15 @@ class GoalWindowTest {
 
     @Test
     fun `window labels are distinct per cadence`() {
-        val labels = ReminderFrequency.entries.map { GoalWindow.windowLabelRes(it) }
+        // INTERVAL is schedule-only and intentionally shares the daily window labels.
+        val cadences = listOf(
+            ReminderFrequency.DAILY,
+            ReminderFrequency.WEEKLY,
+            ReminderFrequency.MONTHLY,
+        )
+        val labels = cadences.map { GoalWindow.windowLabelRes(it) }
         assertEquals(labels.size, labels.distinct().size)
-        val per = ReminderFrequency.entries.map { GoalWindow.perLabelRes(it) }
+        val per = cadences.map { GoalWindow.perLabelRes(it) }
         assertEquals(per.size, per.distinct().size)
     }
 }

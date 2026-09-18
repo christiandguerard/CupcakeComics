@@ -62,6 +62,10 @@ class CupcakeMigrationTest {
         assertEquals(0, book.goalPages)
         assertEquals(ReminderFrequency.DAILY, book.goalCadence)
         assertEquals(0, book.totalPages)
+        // v11 interval columns get safe defaults.
+        assertEquals(0, book.intervalDays)
+        assertEquals(0, book.blockedWeekdays)
+        assertEquals(ReminderShiftDirection.LATER, book.blockedShift)
 
         // Legacy page-a-day rows fold into a 1 page/day goal and keep notifying.
         val pageADay = reminders.first { it.title == "Daily Page" }

@@ -18,7 +18,8 @@ object GoalWindow {
     ): String {
         val cal = (calendar.clone() as Calendar).apply { timeInMillis = nowMillis }
         return when (cadence) {
-            ReminderFrequency.DAILY -> dayString(cal)
+            // Goal windows are day/week/month; INTERVAL only exists for fire schedules.
+            ReminderFrequency.DAILY, ReminderFrequency.INTERVAL -> dayString(cal)
             ReminderFrequency.WEEKLY -> {
                 val first = cal.firstDayOfWeek
                 cal.set(Calendar.HOUR_OF_DAY, 0)
@@ -39,14 +40,14 @@ object GoalWindow {
 
     /** String resource for the window word used in copy ("today" / "this week" / "this month"). */
     fun windowLabelRes(cadence: ReminderFrequency): Int = when (cadence) {
-        ReminderFrequency.DAILY -> R.string.reminder_window_today
+        ReminderFrequency.DAILY, ReminderFrequency.INTERVAL -> R.string.reminder_window_today
         ReminderFrequency.WEEKLY -> R.string.reminder_window_this_week
         ReminderFrequency.MONTHLY -> R.string.reminder_window_this_month
     }
 
     /** Short "per X" label for goal summaries and badges. */
     fun perLabelRes(cadence: ReminderFrequency): Int = when (cadence) {
-        ReminderFrequency.DAILY -> R.string.reminder_goal_per_day
+        ReminderFrequency.DAILY, ReminderFrequency.INTERVAL -> R.string.reminder_goal_per_day
         ReminderFrequency.WEEKLY -> R.string.reminder_goal_per_week
         ReminderFrequency.MONTHLY -> R.string.reminder_goal_per_month
     }

@@ -201,6 +201,10 @@ public final class Utils {
         return filename.matches("(?i).*\\.(pdf)$" );
     }
 
+    public static boolean isEpub(String filename) {
+        return filename.matches("(?i).*\\.(epub)$");
+    }
+
     public static boolean isZip(String filename) {
         return filename.matches("(?i).*\\.(zip|cbz)$");
     }
@@ -251,7 +255,7 @@ public final class Utils {
     public static boolean isArchive(String filename) {
         return isZip(filename) || isRar(filename) ||
                 isTarball(filename) || isSevenZ(filename) ||
-                isPdf(filename);
+                isPdf(filename) || isEpub(filename);
     }
 
     static List<String> mimeTypesZip = Arrays.asList("application/zip", "application/cbz", "application/x-cbz");
@@ -259,6 +263,7 @@ public final class Utils {
     static List<String> mimeTypesSevenZ = Arrays.asList("application/x-cb7", "application/x-7z-compressed");
     static List<String> mimeTypesTar = Arrays.asList("application/x-cbt", "application/x-compressed-tar", "application/x-bzip-compressed-tar", "application/x-tar", "application/x-gtar");
     static List<String> mimeTypesPdf = Arrays.asList("application/pdf", "application/x-pdf");
+    static List<String> mimeTypesEpub = Arrays.asList("application/epub+zip", "application/epub");
     public static String dummyFileNameFromMimeType(String mimeType){
         mimeType = mimeType.toLowerCase();
         if (mimeTypesZip.contains(mimeType))
@@ -271,6 +276,8 @@ public final class Utils {
             return "dummy.tar";
         else if (mimeTypesPdf.contains(mimeType))
             return "dummy.pdf";
+        else if (mimeTypesEpub.contains(mimeType))
+            return "dummy.epub";
         return null;
     }
 

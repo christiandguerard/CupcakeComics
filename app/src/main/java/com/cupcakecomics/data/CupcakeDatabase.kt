@@ -18,7 +18,7 @@ import androidx.room.RoomDatabase
         DailyReadingProgressEntity::class,
         DownloadJobEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @androidx.room.TypeConverters(ReminderConverters::class)

@@ -219,7 +219,7 @@ class LibraryRepository(context: Context) {
             // A typed comic extension is dropped — the file's real one always wins.
             .replace(
                 Regex(
-                    "\\.(cbz|cbr|cb7|cbt|zip|rar|7z|pdf|tar|tgz|tbz2?|txz|tlz|tbr|tzs(?:t|td)?)$",
+                    "\\.(cbz|cbr|cb7|cbt|zip|rar|7z|pdf|epub|tar|tgz|tbz2?|txz|tlz|tbr|tzs(?:t|td)?)$",
                     RegexOption.IGNORE_CASE,
                 ),
                 "",

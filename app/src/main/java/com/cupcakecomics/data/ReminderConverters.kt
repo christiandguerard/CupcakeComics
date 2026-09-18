@@ -27,4 +27,11 @@ class ReminderConverters {
 
     @TypeConverter
     fun toReminderPageMode(value: String): ReminderPageMode = ReminderPageMode.valueOf(value)
+
+    @TypeConverter
+    fun fromReminderShiftDirection(value: ReminderShiftDirection): String = value.name
+
+    @TypeConverter
+    fun toReminderShiftDirection(value: String): ReminderShiftDirection =
+        ReminderShiftDirection.valueOf(value)
 }

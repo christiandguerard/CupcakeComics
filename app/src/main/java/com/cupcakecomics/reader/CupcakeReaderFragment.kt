@@ -590,7 +590,9 @@ class CupcakeReaderFragment : Fragment() {
                     viewModel.dailyGoalMet.collect { met ->
                         val root = view?.findViewById<FrameLayout>(R.id.cupcake_reader_root) ?: return@collect
                         val template = when (met.cadence) {
-                            com.cupcakecomics.data.ReminderFrequency.DAILY -> R.string.reader_goal_met_daily
+                            com.cupcakecomics.data.ReminderFrequency.DAILY,
+                            com.cupcakecomics.data.ReminderFrequency.INTERVAL,
+                            -> R.string.reader_goal_met_daily
                             com.cupcakecomics.data.ReminderFrequency.WEEKLY -> R.string.reader_goal_met_weekly
                             com.cupcakecomics.data.ReminderFrequency.MONTHLY -> R.string.reader_goal_met_monthly
                         }

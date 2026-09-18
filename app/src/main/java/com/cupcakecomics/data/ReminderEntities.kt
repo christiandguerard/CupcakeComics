@@ -5,9 +5,12 @@ import androidx.room.PrimaryKey
 
 enum class ReminderType { PULL_LIST, BOOK }
 
-enum class ReminderFrequency { DAILY, WEEKLY, MONTHLY }
+enum class ReminderFrequency { DAILY, WEEKLY, MONTHLY, INTERVAL }
 
 enum class ReminderBookSource { LIBRARY, PULL, LOCAL }
+
+/** Direction a fire time moves when it lands on a blocked weekday. */
+enum class ReminderShiftDirection { EARLIER, LATER }
 
 /** Page-a-day advances each fire; Resume opens at stored reading progress. */
 enum class ReminderPageMode { PAGE_A_DAY, RESUME }
@@ -53,6 +56,15 @@ data class ReminderEntity(
     /** Cached page count for finish detection and "pages left in book"; 0 = unknown. */
     @androidx.room.ColumnInfo(defaultValue = "0")
     val totalPages: Int = 0,
+    /** Days between fires for [ReminderFrequency.INTERVAL]; 0 = not interval-based. */
+    @androidx.room.ColumnInfo(defaultValue = "0")
+    val intervalDays: Int = 0,
+    /** Bitmask of weekdays (bit 0 = Sunday … bit 6 = Saturday) a fire may not land on. */
+    @androidx.room.ColumnInfo(defaultValue = "0")
+    val blockedWeekdays: Int = 0,
+    /** Where a fire moves when it lands on a blocked weekday. */
+    @androidx.room.ColumnInfo(defaultValue = "LATER")
+    val blockedShift: ReminderShiftDirection = ReminderShiftDirection.LATER,
     val lastFiredAt: Long = 0L,
     val nextFireAt: Long = 0L,
 ) {

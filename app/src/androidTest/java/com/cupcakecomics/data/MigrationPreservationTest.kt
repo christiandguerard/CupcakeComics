@@ -124,9 +124,40 @@ class MigrationPreservationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate10To11AddsIntervalColumns() {
+        val db = helper.createDatabase(TEST_DB_10, 10)
+        // v10 columns: …, dailyPageGoal, notifyEnabled, goalPages, goalCadence,
+        // totalPages, lastFiredAt, nextFireAt
+        db.execSQL(
+            "INSERT INTO reminders VALUES " +
+                "(1, 1, 'BOOK', 'DAILY', 20, 1, 1, 'PULL', 'Saga', 'smb:1:/saga.cbz', " +
+                "0, NULL, 1, '/saga.cbz', 'RESUME', 1, 7, 0, 1, 0, 'DAILY', 22, 0, 0)",
+        )
+        db.close()
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB_10,
+            11,
+            true,
+            CupcakeMigrations.MIGRATION_10_11,
+        )
+        migrated.query("SELECT goalPages, totalPages, intervalDays, blockedWeekdays, blockedShift FROM reminders WHERE id = 1")
+            .use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+                assertEquals(22, cursor.getInt(1))
+                assertEquals(0, cursor.getInt(2))
+                assertEquals(0, cursor.getInt(3))
+                assertEquals("LATER", cursor.getString(4))
+            }
+        migrated.close()
+    }
+
     companion object {
         private const val TEST_DB = "cupcake-migration-test"
         private const val TEST_DB_8 = "cupcake-migration-test-8"
         private const val TEST_DB_9 = "cupcake-migration-test-9"
+        private const val TEST_DB_10 = "cupcake-migration-test-10"
     }
 }

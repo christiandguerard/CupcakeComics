@@ -109,7 +109,7 @@ class BookPickerFragment : Fragment() {
         })
 
         chooseFile.setOnClickListener {
-            openDocument.launch(arrayOf("application/zip", "application/x-cbz", "application/x-cbr", "application/pdf", "*/*"))
+            openDocument.launch(arrayOf("application/zip", "application/x-cbz", "application/x-cbr", "application/pdf", "application/epub+zip", "*/*"))
         }
         reload()
         return view

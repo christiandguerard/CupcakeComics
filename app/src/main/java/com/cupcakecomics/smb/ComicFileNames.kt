@@ -21,7 +21,7 @@ object ComicFileNames {
     fun isComicArchive(filename: String): Boolean {
         return filename.matches(
             Regex(
-                ".*\\.(cbz|cbr|cb7|cbt|zip|rar|7z|pdf|tar|tgz|tbz2?|txz|tlz|tbr|tzs(t|td)?)$",
+                ".*\\.(cbz|cbr|cb7|cbt|zip|rar|7z|pdf|epub|tar|tgz|tbz2?|txz|tlz|tbr|tzs(t|td)?)$",
                 RegexOption.IGNORE_CASE,
             ),
         ) || filename.matches(
@@ -37,7 +37,7 @@ object ComicFileNames {
         var base = filename.trim()
             .replace(
                 Regex(
-                    "\\.(cbz|cbr|cb7|cbt|zip|rar|7z|pdf|tar|tgz|tbz2?|txz|tlz|tbr|tzs(?:t|td)?)$",
+                    "\\.(cbz|cbr|cb7|cbt|zip|rar|7z|pdf|epub|tar|tgz|tbz2?|txz|tlz|tbr|tzs(?:t|td)?)$",
                     RegexOption.IGNORE_CASE,
                 ),
                 "",
@@ -88,7 +88,7 @@ object ComicFileNames {
         val base = filename.trim()
             .replace(
                 Regex(
-                    "\\.(cbz|cbr|cb7|cbt|zip|rar|7z|pdf|tar|tgz|tbz2?|txz|tlz|tbr|tzs(?:t|td)?)$",
+                    "\\.(cbz|cbr|cb7|cbt|zip|rar|7z|pdf|epub|tar|tgz|tbz2?|txz|tlz|tbr|tzs(?:t|td)?)$",
                     RegexOption.IGNORE_CASE,
                 ),
                 "",

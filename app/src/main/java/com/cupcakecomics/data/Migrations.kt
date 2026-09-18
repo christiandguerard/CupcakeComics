@@ -88,5 +88,19 @@ object CupcakeMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE reminders ADD COLUMN intervalDays INTEGER NOT NULL DEFAULT 0",
+            )
+            db.execSQL(
+                "ALTER TABLE reminders ADD COLUMN blockedWeekdays INTEGER NOT NULL DEFAULT 0",
+            )
+            db.execSQL(
+                "ALTER TABLE reminders ADD COLUMN blockedShift TEXT NOT NULL DEFAULT 'LATER'",
+            )
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
 }

@@ -167,6 +167,69 @@
                     android:layout_marginTop="4dp"/>
         </LinearLayout>
 
+        <LinearLayout
+                android:id="@+id/reminder_edit_interval_row"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/reminders_interval_days"
+                    android:textStyle="bold"/>
+
+            <EditText
+                    android:id="@+id/reminder_edit_interval_days"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:inputType="number"
+                    android:imeOptions="actionDone"
+                    android:selectAllOnFocus="true"
+                    android:maxLines="1"
+                    android:maxLength="3"
+                    android:hint="2"
+                    android:importantForAutofill="no"/>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/reminders_blocked_days"
+                    android:textStyle="bold"/>
+
+            <LinearLayout
+                    android:id="@+id/reminder_edit_blocked_container"
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"/>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/reminders_blocked_shift"
+                    android:textStyle="bold"/>
+
+            <Spinner
+                    android:id="@+id/reminder_edit_blocked_shift"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <Button
+                android:id="@+id/reminder_edit_test"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/reminders_test_notification"
+                style="?android:attr/buttonBarButtonStyle"/>
+
         <Button
                 android:id="@+id/reminder_edit_save"
                 android:layout_width="match_parent"

@@ -35,11 +35,25 @@ object ReminderFormat {
                     entity.dayOfMonth,
                     time,
                 )
+            ReminderFrequency.INTERVAL ->
+                context.getString(
+                    R.string.reminders_schedule_interval,
+                    entity.intervalDays.coerceAtLeast(2),
+                    time,
+                )
+        }
+        val withBlocked = if (entity.blockedWeekdays != 0) {
+            val days = (0..6)
+                .filter { entity.blockedWeekdays and (1 shl it) != 0 }
+                .joinToString(" ") { weekdayLabel(context, it + 1).take(3) }
+            base + context.getString(R.string.reminders_schedule_blocked_suffix, days)
+        } else {
+            base
         }
         if (entity.type == ReminderType.BOOK && !entity.effectiveNotify()) {
-            return "$base · ${context.getString(R.string.reminders_notify_off)}"
+            return "$withBlocked · ${context.getString(R.string.reminders_notify_off)}"
         }
-        return base
+        return withBlocked
     }
 
     fun title(context: Context, entity: ReminderEntity): String {

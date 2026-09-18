@@ -92,6 +92,9 @@ class ReminderRepository(context: Context) {
                     dayOfWeek = entity.dayOfWeek,
                     dayOfMonth = entity.dayOfMonth,
                     settings = settings,
+                    intervalDays = entity.intervalDays,
+                    blockedWeekdays = entity.blockedWeekdays,
+                    blockedShift = entity.blockedShift,
                 )
             } else {
                 0L
@@ -205,6 +208,9 @@ class ReminderRepository(context: Context) {
             dayOfWeek = entity.dayOfWeek,
             dayOfMonth = entity.dayOfMonth,
             settings = settings,
+            intervalDays = entity.intervalDays,
+            blockedWeekdays = entity.blockedWeekdays,
+            blockedShift = entity.blockedShift,
         )
     }
 

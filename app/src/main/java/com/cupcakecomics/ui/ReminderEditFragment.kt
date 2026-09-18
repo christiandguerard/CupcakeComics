@@ -11,6 +11,7 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -21,7 +22,9 @@ import com.cupcakecomics.data.CalendarCompat
 import com.cupcakecomics.data.ReminderBookSource
 import com.cupcakecomics.data.ReminderEntity
 import com.cupcakecomics.data.ReminderFrequency
+import com.cupcakecomics.data.ReminderShiftDirection
 import com.cupcakecomics.data.ReminderType
+import com.cupcakecomics.notifications.CupcakeNotifications
 import com.cupcakecomics.reminders.GoalWindow
 import com.cupcakecomics.reminders.ReminderRepository
 import com.nkanaev.comics.R
@@ -39,6 +42,11 @@ class ReminderEditFragment : Fragment() {
     private lateinit var hourSpinner: Spinner
     private lateinit var weeklyRow: View
     private lateinit var monthlyRow: View
+    private lateinit var intervalRow: View
+    private lateinit var intervalDaysInput: EditText
+    private lateinit var blockedContainer: ViewGroup
+    private lateinit var blockedShiftSpinner: Spinner
+    private val blockedBoxes = mutableListOf<CheckBox>()
     private lateinit var dayOfWeekSpinner: Spinner
     private lateinit var dayOfMonthSpinner: Spinner
     private lateinit var bookSection: View
@@ -88,6 +96,10 @@ class ReminderEditFragment : Fragment() {
         hourSpinner = view.findViewById(R.id.reminder_edit_hour)
         weeklyRow = view.findViewById(R.id.reminder_edit_weekly_row)
         monthlyRow = view.findViewById(R.id.reminder_edit_monthly_row)
+        intervalRow = view.findViewById(R.id.reminder_edit_interval_row)
+        intervalDaysInput = view.findViewById(R.id.reminder_edit_interval_days)
+        blockedContainer = view.findViewById(R.id.reminder_edit_blocked_container)
+        blockedShiftSpinner = view.findViewById(R.id.reminder_edit_blocked_shift)
         dayOfWeekSpinner = view.findViewById(R.id.reminder_edit_day_of_week)
         dayOfMonthSpinner = view.findViewById(R.id.reminder_edit_day_of_month)
         bookSection = view.findViewById(R.id.reminder_edit_book_section)
@@ -102,6 +114,23 @@ class ReminderEditFragment : Fragment() {
         setupSpinner(hourSpinner, R.array.settings_hour_labels)
         setupSpinner(dayOfWeekSpinner, R.array.reminder_weekday_labels)
         setupSpinner(goalCadenceSpinner, R.array.reminder_goal_cadence_labels)
+        setupSpinner(blockedShiftSpinner, R.array.reminder_shift_labels)
+
+        // One single-letter toggle per weekday (Sunday first, matching Calendar).
+        val weekdayLabels = resources.getStringArray(R.array.reminder_weekday_labels)
+        blockedBoxes.clear()
+        weekdayLabels.forEachIndexed { index, label ->
+            val box = CheckBox(requireContext()).apply {
+                text = label.take(1)
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f,
+                )
+            }
+            blockedBoxes.add(box)
+            blockedContainer.addView(box)
+        }
 
         val monthDays = (1..28).map { it.toString() }
         dayOfMonthSpinner.adapter = ArrayAdapter(
@@ -122,6 +151,7 @@ class ReminderEditFragment : Fragment() {
         view.findViewById<Button>(R.id.reminder_edit_pick_book).setOnClickListener {
             (activity as MainActivity).pushFragment(BookPickerFragment())
         }
+        view.findViewById<Button>(R.id.reminder_edit_test).setOnClickListener { sendTestNotification() }
         view.findViewById<Button>(R.id.reminder_edit_save).setOnClickListener { save() }
         deleteButton.setOnClickListener { confirmDelete() }
 
@@ -137,9 +167,14 @@ class ReminderEditFragment : Fragment() {
         hourSpinner.setSelection(entity.hourOfDay.coerceIn(0, 23))
         dayOfWeekSpinner.setSelection((entity.dayOfWeek - 1).coerceIn(0, 6))
         dayOfMonthSpinner.setSelection((entity.dayOfMonth - 1).coerceIn(0, 27))
-        goalCadenceSpinner.setSelection(entity.goalCadence.ordinal)
+        goalCadenceSpinner.setSelection(entity.goalCadence.ordinal.coerceAtMost(2))
         notifyBox.isChecked = entity.notifyEnabled
         goalInput.setText(entity.goalPages.coerceAtLeast(0).toString())
+        intervalDaysInput.setText(entity.intervalDays.coerceAtLeast(2).toString())
+        blockedBoxes.forEachIndexed { index, box ->
+            box.isChecked = entity.blockedWeekdays and (1 shl index) != 0
+        }
+        blockedShiftSpinner.setSelection(entity.blockedShift.ordinal)
         bindingSpinners = false
 
         bookSection.visibility = if (entity.type == ReminderType.BOOK) View.VISIBLE else View.GONE
@@ -154,19 +189,13 @@ class ReminderEditFragment : Fragment() {
 
     private fun updateFrequencyRows() {
         if (bindingSpinners) return
+        weeklyRow.visibility = View.GONE
+        monthlyRow.visibility = View.GONE
+        intervalRow.visibility = View.GONE
         when (frequencySpinner.selectedItemPosition) {
-            ReminderFrequency.WEEKLY.ordinal -> {
-                weeklyRow.visibility = View.VISIBLE
-                monthlyRow.visibility = View.GONE
-            }
-            ReminderFrequency.MONTHLY.ordinal -> {
-                weeklyRow.visibility = View.GONE
-                monthlyRow.visibility = View.VISIBLE
-            }
-            else -> {
-                weeklyRow.visibility = View.GONE
-                monthlyRow.visibility = View.GONE
-            }
+            ReminderFrequency.WEEKLY.ordinal -> weeklyRow.visibility = View.VISIBLE
+            ReminderFrequency.MONTHLY.ordinal -> monthlyRow.visibility = View.VISIBLE
+            ReminderFrequency.INTERVAL.ordinal -> intervalRow.visibility = View.VISIBLE
         }
     }
 
@@ -231,13 +260,27 @@ class ReminderEditFragment : Fragment() {
             Toast.makeText(requireContext(), R.string.reminders_book_required, Toast.LENGTH_SHORT).show()
             return
         }
+        val frequency = ReminderFrequency.entries[frequencySpinner.selectedItemPosition]
+        val intervalDays = intervalDaysInput.text.toString().trim().toIntOrNull()?.coerceIn(2, 999) ?: 2
+        val blockedMask = blockedBoxes.foldIndexed(0) { index, mask, box ->
+            if (box.isChecked) mask or (1 shl index) else mask
+        }
+        if (frequency == ReminderFrequency.INTERVAL && blockedMask == 0x7F) {
+            Toast.makeText(requireContext(), R.string.reminders_blocked_all_error, Toast.LENGTH_SHORT).show()
+            return
+        }
         val pick = pickedBook
         val entity = base.copy(
             enabled = enabledBox.isChecked,
-            frequency = ReminderFrequency.entries[frequencySpinner.selectedItemPosition],
+            frequency = frequency,
             hourOfDay = hourSpinner.selectedItemPosition,
             dayOfWeek = dayOfWeekSpinner.selectedItemPosition + CalendarCompat.SUNDAY,
             dayOfMonth = dayOfMonthSpinner.selectedItemPosition + 1,
+            intervalDays = if (frequency == ReminderFrequency.INTERVAL) intervalDays else 0,
+            blockedWeekdays = if (frequency == ReminderFrequency.INTERVAL) blockedMask else 0,
+            blockedShift = ReminderShiftDirection.entries[
+                blockedShiftSpinner.selectedItemPosition.coerceIn(0, 1),
+            ],
             goalPages = currentGoalPages(),
             goalCadence = currentGoalCadence(),
             notifyEnabled = notifyBox.isChecked,
@@ -255,6 +298,57 @@ class ReminderEditFragment : Fragment() {
             Toast.makeText(requireContext(), R.string.reminders_saved, Toast.LENGTH_SHORT).show()
             parentFragmentManager.popBackStack()
         }
+    }
+
+    /**
+     * Posts a preview of exactly what this reminder will send: Pull List reminders
+     * preview the unread-count nudge; book reminders use the current form state
+     * (picked book, goal, cadence) so unsaved edits are reflected too.
+     */
+    private fun sendTestNotification() {
+        val context = requireContext()
+        if (!CupcakeNotifications.areNotificationsAllowed(context)) {
+            Toast.makeText(context, R.string.reminders_test_blocked_toast, Toast.LENGTH_LONG).show()
+            return
+        }
+        val base = editing ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            if (base.type == ReminderType.PULL_LIST) {
+                val count = repo.unreadPullListCount().coerceAtLeast(1)
+                CupcakeNotifications.notifyPullListReminder(context, count)
+            } else {
+                val entity = currentBookEntity()
+                if (entity == null) {
+                    Toast.makeText(context, R.string.reminders_book_required, Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                val page = repo.resolveResumePage(entity)
+                val goalRead = if (entity.hasGoal()) repo.pagesReadInWindow(entity) else null
+                CupcakeNotifications.notifyBookReminder(
+                    context, entity, page, goalRead, preview = true,
+                )
+            }
+            Toast.makeText(context, R.string.reminders_test_sent_toast, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** The book reminder as currently configured in the form, saved or not. */
+    private fun currentBookEntity(): ReminderEntity? {
+        val base = editing ?: return null
+        if (base.type != ReminderType.BOOK) return null
+        val pick = pickedBook ?: return null
+        return base.copy(
+            goalPages = currentGoalPages(),
+            goalCadence = currentGoalCadence(),
+            title = pick.displayTitle,
+            bookSource = pick.source,
+            identityKey = pick.identityKey,
+            libraryComicId = pick.libraryComicId,
+            localPath = pick.localPath,
+            smbShareId = pick.smbShareId,
+            smbRelativePath = pick.smbRelativePath,
+            totalPages = pick.totalPages.takeIf { it > 0 } ?: base.totalPages,
+        )
     }
 
     private fun confirmDelete() {
