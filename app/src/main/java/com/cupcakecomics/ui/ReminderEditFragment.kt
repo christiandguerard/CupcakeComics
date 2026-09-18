@@ -188,12 +188,25 @@ class ReminderEditFragment : Fragment() {
             return
         }
         val per = getString(GoalWindow.perLabelRes(cadence))
-        val existing = editing?.takeIf { it.id > 0L && it.type == ReminderType.BOOK }
-        if (existing == null) {
+        // Preview against the currently picked book — after a re-pick, the saved
+        // row still points at the old title and would report its history instead.
+        val pick = pickedBook
+        val saved = editing?.takeIf { it.id > 0L && it.type == ReminderType.BOOK }
+        val preview = when {
+            pick != null -> (saved ?: ReminderRepository.defaultBookReminder()).copy(
+                bookSource = pick.source,
+                identityKey = pick.identityKey,
+                localPath = pick.localPath,
+                goalPages = goal,
+                goalCadence = cadence,
+            )
+            saved != null -> saved.copy(goalPages = goal, goalCadence = cadence)
+            else -> null
+        }
+        if (preview == null) {
             goalSummary.text = getString(R.string.reminders_summary_goal_new, goal, per)
             return
         }
-        val preview = existing.copy(goalPages = goal, goalCadence = cadence)
         viewLifecycleOwner.lifecycleScope.launch {
             val left = repo.pagesLeftInWindow(preview)
             if (view == null) return@launch

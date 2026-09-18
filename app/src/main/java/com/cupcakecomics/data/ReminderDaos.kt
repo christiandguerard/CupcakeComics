@@ -119,4 +119,12 @@ interface DailyReadingProgressDao {
 
     @Query("DELETE FROM daily_reading_progress WHERE day < :cutoffDay")
     suspend fun pruneBefore(cutoffDay: String)
+
+    @Query(
+        """
+        UPDATE daily_reading_progress SET goalMetAt = 0
+        WHERE bookKey = :bookKey AND day >= :fromDay AND day <= :toDay
+        """,
+    )
+    suspend fun clearGoalMet(bookKey: String, fromDay: String, toDay: String)
 }

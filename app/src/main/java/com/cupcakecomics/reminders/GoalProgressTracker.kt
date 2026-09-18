@@ -100,6 +100,25 @@ class GoalProgressTracker internal constructor(
         return (reminder.goalPages - pagesReadInWindow(reminder, now)).coerceAtLeast(0)
     }
 
+    /**
+     * Resets the once-per-window banner flags covering both the old and new goal
+     * windows. Called when a reminder's goal changes so a raised goal or a cadence
+     * switch (e.g. daily → weekly) can banner again within the current window.
+     */
+    suspend fun clearGoalMetFlags(
+        previous: ReminderEntity,
+        updated: ReminderEntity,
+        now: Long = System.currentTimeMillis(),
+    ) {
+        val bookKey = canonicalKey(updated)
+        val today = dayString(now)
+        val fromDay = minOf(
+            GoalWindow.windowStartDay(previous.goalCadence, now),
+            GoalWindow.windowStartDay(updated.goalCadence, now),
+        )
+        db.dailyReadingProgressDao().clearGoalMet(bookKey, fromDay, today)
+    }
+
     private suspend fun findGoalReminder(keys: Set<String>): ReminderEntity? {
         val candidates = db.reminderDao().getEnabledGoalReminders(MIN_GOAL)
         return candidates.firstOrNull { reminder -> matchKeys(reminder).any { it in keys } }

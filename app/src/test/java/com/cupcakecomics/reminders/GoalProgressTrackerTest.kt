@@ -133,6 +133,40 @@ class GoalProgressTrackerTest {
         assertEquals(0, tracker.pagesReadInWindow(getReminder("smb:1:/saga.cbz"), DAY_ONE))
     }
 
+    @Test
+    fun `clearing goal flags re-arms the banner within the same window`() = runBlocking {
+        insertGoalReminder(identityKey = "smb:1:/saga.cbz", goal = 3)
+        assertNotNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 3, DAY_ONE))
+        assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 1, DAY_ONE))
+
+        // User raises the goal: the old "met" flag must not suppress a new banner.
+        val before = getReminder("smb:1:/saga.cbz")
+        db.reminderDao().upsert(before.copy(goalPages = 6))
+        val after = getReminder("smb:1:/saga.cbz")
+        tracker.clearGoalMetFlags(before, after, DAY_ONE)
+
+        val met = tracker.addPages(setOf("smb:1:/saga.cbz"), 3, DAY_ONE)
+        assertNotNull(met)
+        assertEquals(6, met!!.goal)
+        assertEquals(7, met.pagesRead)
+    }
+
+    @Test
+    fun `clearing goal flags covers a cadence switch window`() = runBlocking {
+        // Daily goal met Friday; user switches to a weekly goal the same day.
+        insertGoalReminder(identityKey = "smb:1:/saga.cbz", goal = 2, cadence = ReminderFrequency.DAILY)
+        assertNotNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 2, DAY_ONE)) // Fri Jul 31
+
+        val before = getReminder("smb:1:/saga.cbz")
+        db.reminderDao().upsert(before.copy(goalPages = 4, goalCadence = ReminderFrequency.WEEKLY))
+        val after = getReminder("smb:1:/saga.cbz")
+        tracker.clearGoalMetFlags(before, after, DAY_ONE)
+
+        // Weekly window (Sun Jul 26 – Sat Aug 1) includes Friday's 2 pages.
+        assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 1, DAY_TWO))
+        assertNotNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 1, DAY_TWO))
+    }
+
     private suspend fun insertGoalReminder(
         identityKey: String?,
         localPath: String? = null,

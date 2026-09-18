@@ -45,6 +45,14 @@ class ReminderRepository(context: Context) {
             },
         )
         val rowId = dao.upsert(withSchedule)
+        // A changed goal re-arms the once-per-window banner for the current window.
+        val previous = if (withSchedule.id != 0L) dao.getById(withSchedule.id) else null
+        if (previous != null &&
+            (previous.goalPages != withSchedule.goalPages ||
+                previous.goalCadence != withSchedule.goalCadence)
+        ) {
+            goalTracker.clearGoalMetFlags(previous, withSchedule)
+        }
         ReminderScheduler.schedule(app)
         return if (withSchedule.id != 0L) withSchedule.id else rowId
     }
