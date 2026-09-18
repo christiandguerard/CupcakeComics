@@ -154,6 +154,13 @@
                 android:text="@string/settings_reminders_manage"
                 style="?android:attr/buttonBarButtonStyle"/>
 
+        <CheckBox
+                android:id="@+id/settings_reminder_cover_art"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_reminder_cover_art"/>
+
         <!-- Pull List -->
         <TextView
                 android:layout_width="match_parent"

@@ -163,6 +163,11 @@ class SettingsFragment : Fragment() {
         view.findViewById<Button>(R.id.settings_open_reminders).setOnClickListener {
             (requireActivity() as MainActivity).pushFragment(RemindersFragment())
         }
+        val coverArt = view.findViewById<CheckBox>(R.id.settings_reminder_cover_art)
+        coverArt.isChecked = cupcake.reminderCoverArt
+        coverArt.setOnCheckedChangeListener { _, checked ->
+            cupcake.reminderCoverArt = checked
+        }
     }
 
     private fun bindPullList(view: View) {

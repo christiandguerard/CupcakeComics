@@ -4,6 +4,7 @@ import androidx.room.Room
 import com.cupcakecomics.data.CupcakeDatabase
 import com.cupcakecomics.data.ReminderBookSource
 import com.cupcakecomics.data.ReminderEntity
+import com.cupcakecomics.data.ReminderFrequency
 import com.cupcakecomics.data.ReminderType
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -16,21 +17,23 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import java.util.Calendar
+import java.util.Locale
 import java.util.TimeZone
 
 @RunWith(RobolectricTestRunner::class)
-class DailyReadingTrackerTest {
+class GoalProgressTrackerTest {
     private lateinit var db: CupcakeDatabase
-    private lateinit var tracker: DailyReadingTracker
+    private lateinit var tracker: GoalProgressTracker
 
     @Before
     fun setUp() {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        Locale.setDefault(Locale.US) // Sunday-first weeks
         db = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
             CupcakeDatabase::class.java,
         ).allowMainThreadQueries().build()
-        tracker = DailyReadingTracker(db)
+        tracker = GoalProgressTracker(db)
     }
 
     @After
@@ -46,9 +49,10 @@ class DailyReadingTrackerTest {
         assertNotNull(met)
         assertEquals(3, met!!.goal)
         assertEquals(4, met.pagesRead)
-        // Further reading the same day does not re-fire.
+        assertEquals(ReminderFrequency.DAILY, met.cadence)
+        // Further reading the same window does not re-fire.
         assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 5, DAY_ONE))
-        assertEquals(9, tracker.pagesReadToday(setOf("smb:1:/saga.cbz"), DAY_ONE))
+        assertEquals(9, tracker.pagesReadInWindow(getReminder("smb:1:/saga.cbz"), DAY_ONE))
     }
 
     @Test
@@ -56,18 +60,46 @@ class DailyReadingTrackerTest {
         insertGoalReminder(identityKey = "smb:1:/saga.cbz", goal = 5)
         assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 2, DAY_ONE))
         assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 2, DAY_ONE))
-        assertEquals(4, tracker.pagesReadToday(setOf("smb:1:/saga.cbz"), DAY_ONE))
+        assertEquals(4, tracker.pagesReadInWindow(getReminder("smb:1:/saga.cbz"), DAY_ONE))
+        assertEquals(1, tracker.pagesLeftInWindow(getReminder("smb:1:/saga.cbz"), DAY_ONE))
     }
 
     @Test
-    fun `day rollover resets counting and allows a new banner`() = runBlocking {
+    fun `daily rollover resets counting and allows a new banner`() = runBlocking {
         insertGoalReminder(identityKey = "smb:1:/saga.cbz", goal = 3)
         assertNotNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 3, DAY_ONE))
         // Next local day: prior day still counts separately, banner can fire again.
-        assertEquals(0, tracker.pagesReadToday(setOf("smb:1:/saga.cbz"), DAY_TWO))
+        assertEquals(0, tracker.pagesReadInWindow(getReminder("smb:1:/saga.cbz"), DAY_TWO))
         assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 1, DAY_TWO))
         assertNotNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 2, DAY_TWO))
-        assertEquals(3, tracker.pagesReadToday(setOf("smb:1:/saga.cbz"), DAY_ONE))
+        assertEquals(3, tracker.pagesReadInWindow(getReminder("smb:1:/saga.cbz"), DAY_ONE))
+    }
+
+    @Test
+    fun `weekly goal accumulates across days and fires once per week`() = runBlocking {
+        insertGoalReminder(identityKey = "smb:1:/saga.cbz", goal = 5, cadence = ReminderFrequency.WEEKLY)
+        // Friday and Saturday are the same Sunday-first week.
+        assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 3, DAY_ONE)) // Fri Jul 31
+        val met = tracker.addPages(setOf("smb:1:/saga.cbz"), 2, DAY_TWO) // Sat Aug 1
+        assertNotNull(met)
+        assertEquals(ReminderFrequency.WEEKLY, met!!.cadence)
+        assertEquals(5, met.pagesRead)
+        // Same week: no second banner.
+        assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 4, DAY_TWO))
+        // Sunday Aug 2 starts a new week: counting resets, banner can fire again.
+        assertEquals(0, tracker.pagesReadInWindow(getReminder("smb:1:/saga.cbz"), DAY_THREE))
+        assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 4, DAY_THREE))
+        assertNotNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 1, DAY_THREE))
+    }
+
+    @Test
+    fun `monthly goal spans the whole month`() = runBlocking {
+        insertGoalReminder(identityKey = "smb:1:/saga.cbz", goal = 10, cadence = ReminderFrequency.MONTHLY)
+        assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 4, DAY_TWO)) // Aug 1
+        assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 4, DAY_THREE)) // Aug 2
+        assertEquals(8, tracker.pagesReadInWindow(getReminder("smb:1:/saga.cbz"), DAY_THREE))
+        assertEquals(2, tracker.pagesLeftInWindow(getReminder("smb:1:/saga.cbz"), DAY_THREE))
+        assertNotNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 2, DAY_THREE))
     }
 
     @Test
@@ -77,8 +109,8 @@ class DailyReadingTrackerTest {
     }
 
     @Test
-    fun `goals below the minimum are ignored`() = runBlocking {
-        insertGoalReminder(identityKey = "smb:1:/saga.cbz", goal = 1)
+    fun `reminders without a goal are ignored`() = runBlocking {
+        insertGoalReminder(identityKey = "smb:1:/saga.cbz", goal = 0)
         assertNull(tracker.addPages(setOf("smb:1:/saga.cbz"), 10, DAY_ONE))
     }
 
@@ -98,7 +130,7 @@ class DailyReadingTrackerTest {
     fun `unrelated books are not tracked`() = runBlocking {
         insertGoalReminder(identityKey = "smb:1:/saga.cbz", goal = 2)
         assertNull(tracker.addPages(setOf("smb:9:/other.cbz"), 10, DAY_ONE))
-        assertEquals(0, tracker.pagesReadToday(setOf("smb:9:/other.cbz"), DAY_ONE))
+        assertEquals(0, tracker.pagesReadInWindow(getReminder("smb:1:/saga.cbz"), DAY_ONE))
     }
 
     private suspend fun insertGoalReminder(
@@ -106,6 +138,7 @@ class DailyReadingTrackerTest {
         localPath: String? = null,
         source: ReminderBookSource = ReminderBookSource.PULL,
         goal: Int,
+        cadence: ReminderFrequency = ReminderFrequency.DAILY,
         enabled: Boolean = true,
     ) {
         db.reminderDao().upsert(
@@ -116,10 +149,14 @@ class DailyReadingTrackerTest {
                 title = "Test Book",
                 identityKey = identityKey,
                 localPath = localPath,
-                dailyPageGoal = goal,
+                goalPages = goal,
+                goalCadence = cadence,
             ),
         )
     }
+
+    private suspend fun getReminder(identityKey: String): ReminderEntity =
+        db.reminderDao().getAll().first { it.identityKey == identityKey }
 
     companion object {
         private fun noonUtc(year: Int, month: Int, day: Int): Long {
@@ -129,7 +166,8 @@ class DailyReadingTrackerTest {
             return cal.timeInMillis
         }
 
-        private val DAY_ONE = noonUtc(2026, Calendar.JULY, 31)
-        private val DAY_TWO = noonUtc(2026, Calendar.AUGUST, 1)
+        private val DAY_ONE = noonUtc(2026, Calendar.JULY, 31) // Friday
+        private val DAY_TWO = noonUtc(2026, Calendar.AUGUST, 1) // Saturday
+        private val DAY_THREE = noonUtc(2026, Calendar.AUGUST, 2) // Sunday (new week)
     }
 }

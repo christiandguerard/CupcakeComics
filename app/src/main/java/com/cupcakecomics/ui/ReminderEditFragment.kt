@@ -1,6 +1,8 @@
 package com.cupcakecomics.ui
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,8 +21,8 @@ import com.cupcakecomics.data.CalendarCompat
 import com.cupcakecomics.data.ReminderBookSource
 import com.cupcakecomics.data.ReminderEntity
 import com.cupcakecomics.data.ReminderFrequency
-import com.cupcakecomics.data.ReminderPageMode
 import com.cupcakecomics.data.ReminderType
+import com.cupcakecomics.reminders.GoalWindow
 import com.cupcakecomics.reminders.ReminderRepository
 import com.nkanaev.comics.R
 import com.nkanaev.comics.activity.MainActivity
@@ -40,9 +42,10 @@ class ReminderEditFragment : Fragment() {
     private lateinit var dayOfWeekSpinner: Spinner
     private lateinit var dayOfMonthSpinner: Spinner
     private lateinit var bookSection: View
-    private lateinit var pageModeSpinner: Spinner
+    private lateinit var goalCadenceSpinner: Spinner
     private lateinit var notifyBox: CheckBox
     private lateinit var goalInput: EditText
+    private lateinit var goalSummary: TextView
     private lateinit var bookLabel: TextView
     private lateinit var deleteButton: Button
 
@@ -62,6 +65,7 @@ class ReminderEditFragment : Fragment() {
             (bundle.getSerializable(BookPickerFragment.BUNDLE_KEY) as? BookPickResult)?.let { picked ->
                 pickedBook = picked
                 refreshBookLabel()
+                updateGoalSummary()
             }
         }
         if (id > 0L) {
@@ -87,16 +91,17 @@ class ReminderEditFragment : Fragment() {
         dayOfWeekSpinner = view.findViewById(R.id.reminder_edit_day_of_week)
         dayOfMonthSpinner = view.findViewById(R.id.reminder_edit_day_of_month)
         bookSection = view.findViewById(R.id.reminder_edit_book_section)
-        pageModeSpinner = view.findViewById(R.id.reminder_edit_page_mode)
+        goalCadenceSpinner = view.findViewById(R.id.reminder_edit_goal_cadence)
         notifyBox = view.findViewById(R.id.reminder_edit_notify)
         goalInput = view.findViewById(R.id.reminder_edit_goal)
+        goalSummary = view.findViewById(R.id.reminder_edit_summary)
         bookLabel = view.findViewById(R.id.reminder_edit_book_label)
         deleteButton = view.findViewById(R.id.reminder_edit_delete)
 
         setupSpinner(frequencySpinner, R.array.reminder_frequency_labels)
         setupSpinner(hourSpinner, R.array.settings_hour_labels)
         setupSpinner(dayOfWeekSpinner, R.array.reminder_weekday_labels)
-        setupSpinner(pageModeSpinner, R.array.reminder_page_mode_labels)
+        setupSpinner(goalCadenceSpinner, R.array.reminder_goal_cadence_labels)
 
         val monthDays = (1..28).map { it.toString() }
         dayOfMonthSpinner.adapter = ArrayAdapter(
@@ -106,7 +111,14 @@ class ReminderEditFragment : Fragment() {
         )
 
         frequencySpinner.onItemSelectedListener = simpleListener { updateFrequencyRows() }
-        pageModeSpinner.onItemSelectedListener = simpleListener { updateNotifyAvailability() }
+        goalCadenceSpinner.onItemSelectedListener = simpleListener { updateGoalSummary() }
+        goalInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                if (!bindingSpinners) updateGoalSummary()
+            }
+        })
         view.findViewById<Button>(R.id.reminder_edit_pick_book).setOnClickListener {
             (activity as MainActivity).pushFragment(BookPickerFragment())
         }
@@ -125,11 +137,10 @@ class ReminderEditFragment : Fragment() {
         hourSpinner.setSelection(entity.hourOfDay.coerceIn(0, 23))
         dayOfWeekSpinner.setSelection((entity.dayOfWeek - 1).coerceIn(0, 6))
         dayOfMonthSpinner.setSelection((entity.dayOfMonth - 1).coerceIn(0, 27))
-        pageModeSpinner.setSelection(if (entity.pageMode == ReminderPageMode.RESUME) 0 else 1)
+        goalCadenceSpinner.setSelection(entity.goalCadence.ordinal)
         notifyBox.isChecked = entity.notifyEnabled
-        goalInput.setText(entity.dailyPageGoal.coerceAtLeast(0).toString())
+        goalInput.setText(entity.goalPages.coerceAtLeast(0).toString())
         bindingSpinners = false
-        updateNotifyAvailability()
 
         bookSection.visibility = if (entity.type == ReminderType.BOOK) View.VISIBLE else View.GONE
         deleteButton.visibility = if (entity.id > 0L) View.VISIBLE else View.GONE
@@ -138,6 +149,7 @@ class ReminderEditFragment : Fragment() {
         }
         updateFrequencyRows()
         refreshBookLabel()
+        updateGoalSummary()
     }
 
     private fun updateFrequencyRows() {
@@ -158,11 +170,41 @@ class ReminderEditFragment : Fragment() {
         }
     }
 
-    private fun updateNotifyAvailability() {
-        // Page-a-day advances on each fire, so its notification cannot be turned off.
-        val pageADay = pageModeSpinner.selectedItemPosition == 1
-        notifyBox.isEnabled = !pageADay
-        if (pageADay) notifyBox.isChecked = true
+    private fun currentGoalPages(): Int =
+        goalInput.text.toString().trim().toIntOrNull()?.coerceIn(0, 999) ?: 0
+
+    private fun currentGoalCadence(): ReminderFrequency =
+        ReminderFrequency.entries.getOrElse(goalCadenceSpinner.selectedItemPosition) {
+            ReminderFrequency.DAILY
+        }
+
+    /** Live "pages left this window" line so the goal's effect is visible before saving. */
+    private fun updateGoalSummary() {
+        if (!::goalSummary.isInitialized) return
+        val goal = currentGoalPages()
+        val cadence = currentGoalCadence()
+        if (goal <= 0) {
+            goalSummary.setText(R.string.reminders_summary_none)
+            return
+        }
+        val per = getString(GoalWindow.perLabelRes(cadence))
+        val existing = editing?.takeIf { it.id > 0L && it.type == ReminderType.BOOK }
+        if (existing == null) {
+            goalSummary.text = getString(R.string.reminders_summary_goal_new, goal, per)
+            return
+        }
+        val preview = existing.copy(goalPages = goal, goalCadence = cadence)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val left = repo.pagesLeftInWindow(preview)
+            if (view == null) return@launch
+            goalSummary.text = getString(
+                R.string.reminders_summary_goal_left,
+                goal,
+                per,
+                left,
+                getString(GoalWindow.windowLabelRes(cadence)),
+            )
+        }
     }
 
     private fun refreshBookLabel() {
@@ -177,21 +219,15 @@ class ReminderEditFragment : Fragment() {
             return
         }
         val pick = pickedBook
-        val pageMode = if (pageModeSpinner.selectedItemPosition == 0) {
-            ReminderPageMode.RESUME
-        } else {
-            ReminderPageMode.PAGE_A_DAY
-        }
-        val goal = goalInput.text.toString().trim().toIntOrNull()?.coerceIn(0, 999) ?: 0
         val entity = base.copy(
             enabled = enabledBox.isChecked,
             frequency = ReminderFrequency.entries[frequencySpinner.selectedItemPosition],
             hourOfDay = hourSpinner.selectedItemPosition,
             dayOfWeek = dayOfWeekSpinner.selectedItemPosition + CalendarCompat.SUNDAY,
             dayOfMonth = dayOfMonthSpinner.selectedItemPosition + 1,
-            pageMode = pageMode,
-            dailyPageGoal = goal,
-            notifyEnabled = notifyBox.isChecked || pageMode == ReminderPageMode.PAGE_A_DAY,
+            goalPages = currentGoalPages(),
+            goalCadence = currentGoalCadence(),
+            notifyEnabled = notifyBox.isChecked,
             title = pick?.displayTitle ?: base.title,
             bookSource = pick?.source ?: base.bookSource,
             identityKey = pick?.identityKey,
@@ -199,6 +235,7 @@ class ReminderEditFragment : Fragment() {
             localPath = pick?.localPath,
             smbShareId = pick?.smbShareId ?: 0L,
             smbRelativePath = pick?.smbRelativePath,
+            totalPages = pick?.totalPages ?: base.totalPages,
         )
         viewLifecycleOwner.lifecycleScope.launch {
             repo.save(entity)
@@ -247,6 +284,7 @@ class ReminderEditFragment : Fragment() {
         localPath = localPath,
         smbShareId = smbShareId,
         smbRelativePath = smbRelativePath,
+        totalPages = totalPages,
     )
 
     companion object {

@@ -3,7 +3,6 @@ package com.cupcakecomics.reminders
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.cupcakecomics.data.ReminderPageMode
 import com.cupcakecomics.data.ReminderType
 import com.cupcakecomics.notifications.CupcakeNotifications
 import com.cupcakecomics.settings.CupcakeSettings
@@ -55,23 +54,19 @@ class ReminderWorker(
             repo.afterFired(reminder)
             return
         }
-        val finished = repo.isBookFinished(reminder)
-        if (finished) {
-            CupcakeNotifications.notifyBookFinished(applicationContext, reminder.id, reminder.title)
+        val page = repo.resolveResumePage(reminder)
+        if (repo.isBookFinished(reminder, page)) {
+            CupcakeNotifications.notifyBookFinished(applicationContext, reminder)
             repo.afterFired(reminder, disabled = true)
             return
         }
-        val page = repo.resolvePageForFire(reminder)
+        val goalPagesRead = if (reminder.hasGoal()) repo.pagesReadInWindow(reminder) else null
         CupcakeNotifications.notifyBookReminder(
             applicationContext,
-            reminderId = reminder.id,
-            title = reminder.title,
-            page = page,
             reminder = reminder,
+            page = page,
+            goalPagesRead = goalPagesRead,
         )
-        if (reminder.pageMode == ReminderPageMode.PAGE_A_DAY) {
-            repo.incrementPageADay(reminder.id)
-        }
         repo.afterFired(reminder)
     }
 

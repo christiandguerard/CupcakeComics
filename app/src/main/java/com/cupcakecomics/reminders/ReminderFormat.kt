@@ -3,7 +3,6 @@ package com.cupcakecomics.reminders
 import android.content.Context
 import com.cupcakecomics.data.ReminderEntity
 import com.cupcakecomics.data.ReminderFrequency
-import com.cupcakecomics.data.ReminderPageMode
 import com.cupcakecomics.data.ReminderType
 import com.nkanaev.comics.R
 
@@ -53,12 +52,13 @@ object ReminderFormat {
 
     fun modeBadge(context: Context, entity: ReminderEntity): String? {
         if (entity.type != ReminderType.BOOK) return null
-        if (entity.dailyPageGoal >= DailyReadingTracker.MIN_GOAL) {
-            return context.getString(R.string.reminders_mode_goal, entity.dailyPageGoal)
+        if (entity.hasGoal()) {
+            return context.getString(
+                R.string.reminders_mode_goal,
+                entity.goalPages,
+                context.getString(GoalWindow.perLabelRes(entity.goalCadence)),
+            )
         }
-        return when (entity.pageMode) {
-            ReminderPageMode.PAGE_A_DAY -> context.getString(R.string.reminders_mode_page_a_day)
-            ReminderPageMode.RESUME -> context.getString(R.string.reminders_mode_resume)
-        }
+        return context.getString(R.string.reminders_mode_resume)
     }
 }

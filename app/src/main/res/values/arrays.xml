@@ -81,9 +81,10 @@
         <item>Monthly</item>
     </string-array>
 
-    <string-array name="reminder_page_mode_labels">
-        <item>Resume progress</item>
-        <item>Page-a-day</item>
+    <string-array name="reminder_goal_cadence_labels">
+        <item>per day</item>
+        <item>per week</item>
+        <item>per month</item>
     </string-array>
 
     <string-array name="reminder_weekday_labels">

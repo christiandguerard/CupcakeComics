@@ -4,8 +4,8 @@ import android.content.Context
 import com.cupcakecomics.data.CupcakeDatabase
 import com.cupcakecomics.data.ReminderEntity
 import com.cupcakecomics.data.ReminderFrequency
-import com.cupcakecomics.data.ReminderPageMode
 import com.cupcakecomics.data.ReminderType
+import com.cupcakecomics.reader.settings.ReaderSettingsStore
 import com.cupcakecomics.settings.CupcakeSettings
 import kotlinx.coroutines.flow.Flow
 
@@ -15,6 +15,8 @@ class ReminderRepository(context: Context) {
     private val dao = db.reminderDao()
     private val pullDao = db.pullComicDao()
     private val settings = CupcakeSettings(app)
+    private val readerSettings = ReaderSettingsStore(app)
+    private val goalTracker = GoalProgressTracker(app)
 
     fun observeAll(): Flow<List<ReminderEntity>> = dao.observeAll()
 
@@ -28,8 +30,19 @@ class ReminderRepository(context: Context) {
     suspend fun unreadPullListCount(): Int = pullDao.getPullList().size
 
     suspend fun save(entity: ReminderEntity): Long {
-        val withSchedule = entity.copy(
-            nextFireAt = if (entity.enabled && entity.effectiveNotify()) computeNextFor(entity) else 0L,
+        // Cache the page count at save time when the source knows it cheaply, so
+        // finish detection and "pages left in book" work before the next read.
+        val withPages = if (entity.type == ReminderType.BOOK && entity.totalPages <= 0) {
+            entity.copy(totalPages = resolveTotalPages(entity))
+        } else {
+            entity
+        }
+        val withSchedule = withPages.copy(
+            nextFireAt = if (withPages.enabled && withPages.effectiveNotify()) {
+                computeNextFor(withPages)
+            } else {
+                0L
+            },
         )
         val rowId = dao.upsert(withSchedule)
         ReminderScheduler.schedule(app)
@@ -79,11 +92,6 @@ class ReminderRepository(context: Context) {
         dao.update(updated)
     }
 
-    suspend fun incrementPageADay(id: Long) {
-        val existing = dao.getById(id) ?: return
-        dao.update(existing.copy(pageADayIndex = existing.pageADayIndex + 1))
-    }
-
     suspend fun updateTrackedPageForLocalPath(localPath: String, page: Int) {
         if (page <= 0) return
         dao.updateTrackedPageForLocalPath(localPath, page)
@@ -94,53 +102,86 @@ class ReminderRepository(context: Context) {
         dao.updateTrackedPageForIdentity(identityKey, page)
     }
 
+    suspend fun updateTotalPagesForLocalPath(localPath: String, totalPages: Int) {
+        if (totalPages <= 0 || localPath.isBlank()) return
+        dao.updateTotalPagesForLocalPath(localPath, totalPages)
+    }
+
+    suspend fun updateTotalPagesForIdentity(identityKey: String, totalPages: Int) {
+        if (totalPages <= 0 || identityKey.isBlank()) return
+        dao.updateTotalPagesForIdentity(identityKey, totalPages)
+    }
+
+    suspend fun pagesLeftInWindow(
+        entity: ReminderEntity,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): Int = goalTracker.pagesLeftInWindow(entity, nowMillis)
+
+    suspend fun pagesReadInWindow(
+        entity: ReminderEntity,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): Int = goalTracker.pagesReadInWindow(entity, nowMillis)
+
+    /**
+     * Unified resume point: the furthest page any progress store has seen. The
+     * reader's own open path maxes the same sources, so a notification tap never
+     * lands behind where the user actually left off.
+     */
     suspend fun resolveResumePage(entity: ReminderEntity): Int {
-        return when (entity.bookSource) {
+        val candidates = mutableListOf(entity.trackedPage)
+        entity.identityKey?.takeIf { it.isNotBlank() }?.let {
+            candidates += readerSettings.getLastPage(it)
+        }
+        entity.localPath?.takeIf { it.isNotBlank() }?.let {
+            candidates += readerSettings.getLastPage("file:$it")
+        }
+        when (entity.bookSource) {
             com.cupcakecomics.data.ReminderBookSource.LIBRARY -> {
-                if (entity.libraryComicId <= 0) 1
-                else {
+                if (entity.libraryComicId > 0) {
                     val comic = com.nkanaev.comics.model.Storage.getStorage(app)
                         .getComic(entity.libraryComicId)
-                    (comic?.currentPage ?: 1).coerceAtLeast(1)
+                    candidates += comic?.currentPage ?: 0
                 }
             }
             com.cupcakecomics.data.ReminderBookSource.PULL -> {
-                val key = entity.identityKey ?: return 1
-                val pull = pullDao.getByKey(key)
-                (pull?.highestPage?.takeIf { it > 0 } ?: 1)
+                entity.identityKey?.let { key ->
+                    candidates += pullDao.getByKey(key)?.highestPage ?: 0
+                }
             }
-            com.cupcakecomics.data.ReminderBookSource.LOCAL ->
-                entity.trackedPage.coerceAtLeast(1)
-            null -> 1
+            else -> Unit
         }
+        return (candidates.filter { it > 0 }.maxOrNull() ?: 1)
     }
 
-    suspend fun resolvePageForFire(entity: ReminderEntity): Int {
-        if (entity.type != ReminderType.BOOK) return 1
-        return when (entity.pageMode) {
-            ReminderPageMode.PAGE_A_DAY -> entity.pageADayIndex.coerceAtLeast(1)
-            ReminderPageMode.RESUME -> resolveResumePage(entity)
-        }
-    }
+    /** Fresh resume page for a notification tap, resolved at open time. */
+    suspend fun resolveResumePageById(reminderId: Long): Int? =
+        dao.getById(reminderId)?.let { resolveResumePage(it) }
 
-    suspend fun isBookFinished(entity: ReminderEntity): Boolean {
-        if (entity.type != ReminderType.BOOK || entity.pageMode != ReminderPageMode.PAGE_A_DAY) {
-            return false
-        }
-        val pageCount = when (entity.bookSource) {
+    /** Page count for finish detection / "pages left", refreshing the cache when known. */
+    suspend fun resolveTotalPages(entity: ReminderEntity): Int {
+        if (entity.totalPages > 0) return entity.totalPages
+        val count = when (entity.bookSource) {
             com.cupcakecomics.data.ReminderBookSource.LIBRARY -> {
-                if (entity.libraryComicId <= 0) return false
-                com.nkanaev.comics.model.Storage.getStorage(app)
-                    .getComic(entity.libraryComicId)?.totalPages ?: return false
+                if (entity.libraryComicId <= 0) 0 else {
+                    com.nkanaev.comics.model.Storage.getStorage(app)
+                        .getComic(entity.libraryComicId)?.totalPages ?: 0
+                }
             }
-            com.cupcakecomics.data.ReminderBookSource.PULL -> {
-                val key = entity.identityKey ?: return false
-                pullDao.getByKey(key)?.pageCount?.takeIf { it > 0 } ?: return false
-            }
-            com.cupcakecomics.data.ReminderBookSource.LOCAL -> return false
-            null -> return false
+            com.cupcakecomics.data.ReminderBookSource.PULL ->
+                entity.identityKey?.let { pullDao.getByKey(it)?.pageCount ?: 0 } ?: 0
+            else -> 0
         }
-        return entity.pageADayIndex > pageCount
+        if (count > 0 && entity.id > 0) {
+            dao.update(entity.copy(totalPages = count))
+        }
+        return count
+    }
+
+    /** Finished = resume page reached the final page. [resumePage] avoids a double lookup. */
+    suspend fun isBookFinished(entity: ReminderEntity, resumePage: Int = resolveResumePage(entity)): Boolean {
+        if (entity.type != ReminderType.BOOK) return false
+        val total = resolveTotalPages(entity)
+        return total > 0 && resumePage >= total
     }
 
     fun computeNextFor(entity: ReminderEntity): Long {
@@ -167,7 +208,6 @@ class ReminderRepository(context: Context) {
             frequency = ReminderFrequency.DAILY,
             hourOfDay = 20,
             bookSource = com.cupcakecomics.data.ReminderBookSource.LIBRARY,
-            pageMode = ReminderPageMode.RESUME,
         )
     }
 }

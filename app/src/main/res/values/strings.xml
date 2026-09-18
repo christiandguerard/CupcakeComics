@@ -402,6 +402,7 @@
     <string name="settings_section_reminders">Reminders</string>
     <string name="settings_reminders_hint">Schedule nudges to read Pull List comics or a specific book. Tap a notification to jump straight to the list or page.</string>
     <string name="settings_reminders_manage">Manage reminders</string>
+    <string name="settings_reminder_cover_art">Show book covers in reminder notifications</string>
 
     <string name="settings_section_debug">Debug</string>
     <string name="settings_debug_feedback">In-app feedback (floating button)</string>
@@ -442,8 +443,18 @@
     <string name="reminder_pull_notify_body">%1$d unread comic(s) waiting</string>
     <string name="reminder_book_notify_title">Read %1$s</string>
     <string name="reminder_book_notify_body">Continue at page %1$d</string>
+    <string name="reminder_book_notify_body_goal">%1$d pages left %2$s</string>
+    <string name="reminder_book_notify_body_goal_met">Goal met %1$s — %2$d pages read</string>
+    <string name="reminder_book_notify_body_pages_left">Continue at page %1$d · %2$d pages left</string>
+    <string name="reminder_book_action_read_now">Read now</string>
     <string name="reminder_book_finished_title">Reading reminder complete</string>
     <string name="reminder_book_finished_body">You reached the end of %1$s</string>
+    <string name="reminder_window_today">today</string>
+    <string name="reminder_window_this_week">this week</string>
+    <string name="reminder_window_this_month">this month</string>
+    <string name="reminder_goal_per_day">per day</string>
+    <string name="reminder_goal_per_week">per week</string>
+    <string name="reminder_goal_per_month">per month</string>
 
     <string name="reminders_title">Reminders</string>
     <string name="reminders_empty">No reminders yet. Add a Pull List nudge or a book reminder below.</string>
@@ -466,18 +477,22 @@
     <string name="reminders_save">Save reminder</string>
     <string name="reminders_type_pull">Pull List</string>
     <string name="reminders_type_book">Book</string>
-    <string name="reminders_mode_page_a_day">Page-a-day</string>
     <string name="reminders_mode_resume">Resume progress</string>
-    <string name="reminders_mode_goal">Goal: %1$d pages/day</string>
+    <string name="reminders_mode_goal">Goal: %1$d pages %2$s</string>
     <string name="reminders_schedule_daily">Daily at %1$s</string>
     <string name="reminders_schedule_weekly">Weekly on %1$s at %2$s</string>
     <string name="reminders_schedule_monthly">Monthly on day %1$d at %2$s</string>
     <string name="reminders_no_book">No book selected</string>
-    <string name="reminders_daily_goal">Pages per day goal</string>
-    <string name="reminders_daily_goal_hint">0 = off. Set 2 or more to get a small banner once you hit your daily goal.</string>
+    <string name="reminders_goal_pages">Reading goal (pages)</string>
+    <string name="reminders_goal_hint">0 = no goal. With a goal, the reminder tells you how many pages are left in the current period.</string>
+    <string name="reminders_summary_none">No goal — the notification opens where you left off.</string>
+    <string name="reminders_summary_goal_new">Goal: %1$d pages %2$s</string>
+    <string name="reminders_summary_goal_left">Goal: %1$d pages %2$s · %3$d pages left %4$s</string>
     <string name="reminders_notify_enabled">Status-bar notification</string>
     <string name="reminders_notify_off">notification off</string>
-    <string name="reader_daily_goal_met">Daily goal met — %1$d pages of %2$s today</string>
+    <string name="reader_goal_met_daily">Daily goal met — %1$d pages of %2$s today</string>
+    <string name="reader_goal_met_weekly">Weekly goal met — %1$d pages of %2$s this week</string>
+    <string name="reader_goal_met_monthly">Monthly goal met — %1$d pages of %2$s this month</string>
 
     <string name="book_picker_title">Pick a book</string>
     <string name="book_picker_tab_library">Library</string>

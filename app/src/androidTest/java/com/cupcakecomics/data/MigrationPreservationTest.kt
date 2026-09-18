@@ -82,8 +82,51 @@ class MigrationPreservationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate9To10FoldsLegacyProgressionIntoGoals() {
+        val db = helper.createDatabase(TEST_DB_9, 9)
+        // Page-a-day book reminder with notifications off — must become a 1 page/day
+        // goal and regain notifications (page-a-day always notified).
+        db.execSQL(
+            "INSERT INTO reminders VALUES " +
+                "(1, 1, 'BOOK', 'DAILY', 20, 1, 1, 'PULL', 'Page A Day', 'smb:1:/pad.cbz', " +
+                "0, NULL, 1, '/pad.cbz', 'PAGE_A_DAY', 4, 2, 0, 0, 0, 0)",
+        )
+        // Daily habit goal keeps its page count.
+        db.execSQL(
+            "INSERT INTO reminders VALUES " +
+                "(2, 1, 'BOOK', 'DAILY', 20, 1, 1, 'LOCAL', 'Habit', NULL, " +
+                "0, '/books/habit.cbz', 0, NULL, 'RESUME', 1, 3, 5, 0, 0, 0)",
+        )
+        db.close()
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB_9,
+            10,
+            true,
+            CupcakeMigrations.MIGRATION_9_10,
+        )
+        migrated.query("SELECT goalPages, goalCadence, notifyEnabled, totalPages FROM reminders WHERE id = 1")
+            .use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals(1, cursor.getInt(0))
+                assertEquals("DAILY", cursor.getString(1))
+                assertEquals(1, cursor.getInt(2))
+                assertEquals(0, cursor.getInt(3))
+            }
+        migrated.query("SELECT goalPages, goalCadence, notifyEnabled FROM reminders WHERE id = 2")
+            .use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals(5, cursor.getInt(0))
+                assertEquals("DAILY", cursor.getString(1))
+                assertEquals(0, cursor.getInt(2))
+            }
+        migrated.close()
+    }
+
     companion object {
         private const val TEST_DB = "cupcake-migration-test"
         private const val TEST_DB_8 = "cupcake-migration-test-8"
+        private const val TEST_DB_9 = "cupcake-migration-test-9"
     }
 }

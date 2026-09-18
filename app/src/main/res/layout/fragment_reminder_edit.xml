@@ -17,6 +17,83 @@
                 android:text="@string/reminders_enabled"
                 android:checked="true"/>
 
+        <LinearLayout
+                android:id="@+id/reminder_edit_book_section"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+
+            <TextView
+                    android:id="@+id/reminder_edit_book_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/reminders_no_book"
+                    android:textSize="14sp"/>
+
+            <Button
+                    android:id="@+id/reminder_edit_pick_book"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/reminders_pick_book"
+                    style="?android:attr/buttonBarButtonStyle"/>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/reminders_goal_pages"
+                    android:textStyle="bold"/>
+
+            <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp">
+
+                <EditText
+                        android:id="@+id/reminder_edit_goal"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:maxLength="3"
+                        android:hint="0"
+                        android:importantForAutofill="no"/>
+
+                <Spinner
+                        android:id="@+id/reminder_edit_goal_cadence"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/reminders_goal_hint"
+                    android:textSize="12sp"/>
+
+            <TextView
+                    android:id="@+id/reminder_edit_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textSize="13sp"
+                    android:textStyle="italic"/>
+
+            <CheckBox
+                    android:id="@+id/reminder_edit_notify"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/reminders_notify_enabled"
+                    android:checked="true"/>
+        </LinearLayout>
+
         <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -83,74 +160,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"/>
-        </LinearLayout>
-
-        <LinearLayout
-                android:id="@+id/reminder_edit_book_section"
-                android:orientation="vertical"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone">
-
-            <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/reminders_page_mode"
-                    android:textStyle="bold"/>
-
-            <Spinner
-                    android:id="@+id/reminder_edit_page_mode"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"/>
-
-            <CheckBox
-                    android:id="@+id/reminder_edit_notify"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/reminders_notify_enabled"
-                    android:checked="true"/>
-
-            <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/reminders_daily_goal"
-                    android:textStyle="bold"/>
-
-            <EditText
-                    android:id="@+id/reminder_edit_goal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:inputType="number"
-                    android:maxLength="3"
-                    android:hint="0"/>
-
-            <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/reminders_daily_goal_hint"
-                    android:textSize="12sp"/>
-
-            <TextView
-                    android:id="@+id/reminder_edit_book_label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/reminders_no_book"
-                    android:textSize="14sp"/>
-
-            <Button
-                    android:id="@+id/reminder_edit_pick_book"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/reminders_pick_book"
-                    style="?android:attr/buttonBarButtonStyle"/>
         </LinearLayout>
 
         <Button

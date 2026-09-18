@@ -19,7 +19,6 @@ import com.cupcakecomics.data.ReminderBookSource
 import com.cupcakecomics.smb.ComicFileNames
 import com.google.android.material.tabs.TabLayout
 import com.nkanaev.comics.R
-import com.nkanaev.comics.managers.Utils
 import com.nkanaev.comics.model.Storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -34,6 +33,7 @@ data class BookPickResult(
     val localPath: String?,
     val smbShareId: Long,
     val smbRelativePath: String?,
+    val totalPages: Int = 0,
 ) : Serializable
 
 class BookPickerFragment : Fragment() {
@@ -57,7 +57,7 @@ class BookPickerFragment : Fragment() {
                 finishPick(
                     BookPickResult(
                         source = ReminderBookSource.LOCAL,
-                        displayTitle = Utils.removeExtensionIfAny(title),
+                        displayTitle = ComicFileNames.shortDisplayName(title),
                         identityKey = entity?.sourceKey ?: "local:$uri",
                         libraryComicId = 0,
                         localPath = entity?.localPath ?: uri.toString(),
@@ -70,7 +70,7 @@ class BookPickerFragment : Fragment() {
                 finishPick(
                     BookPickResult(
                         source = ReminderBookSource.LOCAL,
-                        displayTitle = Utils.removeExtensionIfAny(name),
+                        displayTitle = ComicFileNames.shortDisplayName(name),
                         identityKey = "local:$uri",
                         libraryComicId = 0,
                         localPath = uri.toString(),
@@ -128,7 +128,7 @@ class BookPickerFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val rows = withContext(Dispatchers.IO) {
                 Storage.getStorage(requireContext()).listComics().map { comic ->
-                    val title = Utils.removeExtensionIfAny(comic.file.name)
+                    val title = ComicFileNames.shortDisplayName(comic.file.name)
                     PickerRow(
                         title = title,
                         subtitle = comic.file.parent ?: "",
@@ -140,6 +140,7 @@ class BookPickerFragment : Fragment() {
                             localPath = comic.file.absolutePath,
                             smbShareId = 0L,
                             smbRelativePath = null,
+                            totalPages = comic.totalPages,
                         ),
                     )
                 }
@@ -154,17 +155,19 @@ class BookPickerFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val rows = withContext(Dispatchers.IO) {
                 CupcakeDatabase.get(requireContext()).pullComicDao().getPullList().map { item ->
+                    val title = ComicFileNames.shortDisplayName(item.title)
                     PickerRow(
-                        title = ComicFileNames.shortDisplayName(item.title),
+                        title = title,
                         subtitle = item.relativePath,
                         pick = BookPickResult(
                             source = ReminderBookSource.PULL,
-                            displayTitle = Utils.removeExtensionIfAny(item.title),
+                            displayTitle = title,
                             identityKey = item.identityKey,
                             libraryComicId = 0,
                             localPath = null,
                             smbShareId = item.shareId,
                             smbRelativePath = item.relativePath,
+                            totalPages = item.pageCount,
                         ),
                     )
                 }

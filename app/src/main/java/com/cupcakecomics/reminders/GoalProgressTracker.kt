@@ -4,16 +4,20 @@ import android.content.Context
 import com.cupcakecomics.data.CupcakeDatabase
 import com.cupcakecomics.data.DailyReadingProgressEntity
 import com.cupcakecomics.data.ReminderEntity
+import com.cupcakecomics.data.ReminderFrequency
 import java.util.Calendar
 import java.util.Locale
 
 /**
- * Counts forward-reading progress per book per local day for enabled book reminders
- * that carry a daily page goal (dailyPageGoal >= [MIN_GOAL]). When the goal is first
- * reached on a given day, [addPages] returns a [GoalMet] so the reader can show a
- * one-time, non-invasive banner. State lives in Room so progress survives restarts.
+ * Counts forward-reading progress per book for enabled book reminders that carry a
+ * page goal ([ReminderEntity.goalPages] >= [MIN_GOAL]). Progress accumulates over the
+ * goal's cadence window (day / week / month, see [GoalWindow]); when the goal is
+ * first reached inside a window, [addPages] returns a [GoalMet] so the reader can
+ * show a one-time, non-invasive banner. State lives in Room so progress survives
+ * restarts; rows are per local day and window sums are calendar-aligned, so window
+ * rollover needs no bookkeeping.
  */
-class DailyReadingTracker internal constructor(
+class GoalProgressTracker internal constructor(
     private val db: CupcakeDatabase,
 ) {
     constructor(context: Context) : this(CupcakeDatabase.get(context.applicationContext))
@@ -22,12 +26,13 @@ class DailyReadingTracker internal constructor(
         val title: String,
         val goal: Int,
         val pagesRead: Int,
+        val cadence: ReminderFrequency,
     )
 
     /**
      * Adds [pages] newly-read pages for the book identified by any of [keys]
      * (identity keys and/or local file paths). Returns [GoalMet] exactly once per
-     * book per day when the goal is crossed; null otherwise.
+     * book per goal window when the goal is crossed; null otherwise.
      */
     suspend fun addPages(
         keys: Set<String>,
@@ -38,32 +43,61 @@ class DailyReadingTracker internal constructor(
         val reminder = findGoalReminder(keys) ?: return null
         val bookKey = canonicalKey(reminder)
         val today = dayString(now)
+        val windowStart = GoalWindow.windowStartDay(reminder.goalCadence, now)
         val dao = db.dailyReadingProgressDao()
+
         val existing = dao.get(bookKey, today)
-        val newCount = (existing?.pagesRead ?: 0) + pages
-        val alreadyMet = (existing?.goalMetAt ?: 0L) > 0L
-        val justMet = !alreadyMet && newCount >= reminder.dailyPageGoal
+        val newTodayCount = (existing?.pagesRead ?: 0) + pages
         dao.upsert(
             DailyReadingProgressEntity(
                 bookKey = bookKey,
                 day = today,
-                pagesRead = newCount,
-                goalMetAt = when {
-                    alreadyMet -> existing!!.goalMetAt
-                    justMet -> now
-                    else -> 0L
-                },
+                pagesRead = newTodayCount,
+                // Written transactionally with the row so the banner fires once per window.
+                goalMetAt = existing?.goalMetAt ?: 0L,
             ),
         )
+
+        val windowTotal = dao.sumPages(bookKey, windowStart, today)
+        val alreadyMetInWindow = dao.goalMetCount(bookKey, windowStart, today) > 0
+        val justMet = !alreadyMetInWindow && windowTotal >= reminder.goalPages
+        if (justMet) {
+            dao.upsert(
+                DailyReadingProgressEntity(
+                    bookKey = bookKey,
+                    day = today,
+                    pagesRead = newTodayCount,
+                    goalMetAt = now,
+                ),
+            )
+        }
         dao.pruneBefore(dayString(now - RETENTION_DAYS * DAY_MS))
-        return if (justMet) GoalMet(reminder.title, reminder.dailyPageGoal, newCount) else null
+        return if (justMet) {
+            GoalMet(reminder.title, reminder.goalPages, windowTotal, reminder.goalCadence)
+        } else {
+            null
+        }
     }
 
-    /** Pages counted today for the goal reminder matching [keys]; 0 when untracked. */
-    suspend fun pagesReadToday(keys: Set<String>, now: Long = System.currentTimeMillis()): Int {
-        if (keys.isEmpty()) return 0
-        val reminder = findGoalReminder(keys) ?: return 0
-        return db.dailyReadingProgressDao().get(canonicalKey(reminder), dayString(now))?.pagesRead ?: 0
+    /** Pages counted in the current goal window for [reminder]; 0 when untracked. */
+    suspend fun pagesReadInWindow(
+        reminder: ReminderEntity,
+        now: Long = System.currentTimeMillis(),
+    ): Int {
+        if (!reminder.hasGoal()) return 0
+        val bookKey = canonicalKey(reminder)
+        val today = dayString(now)
+        val windowStart = GoalWindow.windowStartDay(reminder.goalCadence, now)
+        return db.dailyReadingProgressDao().sumPages(bookKey, windowStart, today)
+    }
+
+    /** Pages still needed to hit the goal in the current window; 0 when met/no goal. */
+    suspend fun pagesLeftInWindow(
+        reminder: ReminderEntity,
+        now: Long = System.currentTimeMillis(),
+    ): Int {
+        if (!reminder.hasGoal()) return 0
+        return (reminder.goalPages - pagesReadInWindow(reminder, now)).coerceAtLeast(0)
     }
 
     private suspend fun findGoalReminder(keys: Set<String>): ReminderEntity? {
@@ -72,7 +106,7 @@ class DailyReadingTracker internal constructor(
     }
 
     companion object {
-        const val MIN_GOAL = 2
+        const val MIN_GOAL = 1
         private const val RETENTION_DAYS = 45L
         private const val DAY_MS = 24L * 60L * 60L * 1000L
 

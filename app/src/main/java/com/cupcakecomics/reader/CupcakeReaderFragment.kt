@@ -38,6 +38,8 @@ import com.cupcakecomics.reader.gl.PageDecodeCache
 import com.cupcakecomics.reader.gl.ReaderGlSurfaceView
 import com.cupcakecomics.reader.model.FitMode
 import com.cupcakecomics.reader.model.PageTransition
+import com.cupcakecomics.reminders.ReminderOpenHelper
+import com.cupcakecomics.reminders.ReminderRepository
 import com.cupcakecomics.reader.model.PagesLayout
 import com.cupcakecomics.reader.model.ReadingFlow
 import com.cupcakecomics.reader.model.ReaderSession
@@ -489,9 +491,25 @@ class CupcakeReaderFragment : Fragment() {
             .takeIf { it > 0 }
             ?: activity?.intent?.getIntExtra(PARAM_PAGE, 0)?.takeIf { it > 0 }
             ?: 0
+        val reminderId = args.getLong(ReminderOpenHelper.EXTRA_REMINDER_ID, 0L)
+            .takeIf { it > 0L }
+            ?: activity?.intent?.getLongExtra(ReminderOpenHelper.EXTRA_REMINDER_ID, 0L)
+                ?.takeIf { it > 0L }
+            ?: 0L
 
         lifecycleScope.launch {
             try {
+                // A reminder tap re-resolves the resume page now, so the book opens
+                // exactly where reading stopped even if progress moved after the
+                // notification posted. The fire-time page extra is only a fallback.
+                val startPage = if (reminderId > 0L) {
+                    runCatching {
+                        ReminderRepository(requireContext().applicationContext)
+                            .resolveResumePageById(reminderId)
+                    }.getOrNull()?.takeIf { it > 0 } ?: initialPage
+                } else {
+                    initialPage
+                }
                 val shareId = args.getLong(PARAM_SMB_SHARE_ID, -1L)
                     .takeIf { it > 0 }
                     ?: activity?.intent?.getLongExtra(PARAM_SMB_SHARE_ID, -1L)?.takeIf { it > 0 }
@@ -509,7 +527,7 @@ class CupcakeReaderFragment : Fragment() {
                             isCancelled = { viewModel.isStageCancelled() },
                         )
                     }
-                    viewModel.open(opened.source, identity, null, initialPage)
+                    viewModel.open(opened.source, identity, null, startPage)
                     return@launch
                 }
 
@@ -529,17 +547,17 @@ class CupcakeReaderFragment : Fragment() {
                         val title = intent?.data?.lastPathSegment.orEmpty()
                         source = ParserPageSource.fromParser(parser, title)
                         val localPath = intent?.data?.toString()
-                        viewModel.open(source, identity, comic, initialPage, localPath)
+                        viewModel.open(source, identity, comic, startPage, localPath)
                         return@launch
                     }
                     else -> {
                         val file = args.getSerializable(PARAM_HANDLER) as File
                         source = ParserPageSource.fromFile(file)
-                        viewModel.open(source, identity, comic, initialPage, file.absolutePath)
+                        viewModel.open(source, identity, comic, startPage, file.absolutePath)
                         return@launch
                     }
                 }
-                viewModel.open(source, identity, comic, initialPage)
+                viewModel.open(source, identity, comic, startPage)
             } catch (t: Throwable) {
                 loading?.visibility = View.GONE
                 errorView?.visibility = View.VISIBLE
@@ -571,9 +589,14 @@ class CupcakeReaderFragment : Fragment() {
                 launch {
                     viewModel.dailyGoalMet.collect { met ->
                         val root = view?.findViewById<FrameLayout>(R.id.cupcake_reader_root) ?: return@collect
+                        val template = when (met.cadence) {
+                            com.cupcakecomics.data.ReminderFrequency.DAILY -> R.string.reader_goal_met_daily
+                            com.cupcakecomics.data.ReminderFrequency.WEEKLY -> R.string.reader_goal_met_weekly
+                            com.cupcakecomics.data.ReminderFrequency.MONTHLY -> R.string.reader_goal_met_monthly
+                        }
                         TopBanner.show(
                             root,
-                            getString(R.string.reader_daily_goal_met, met.goal, met.title),
+                            getString(template, met.pagesRead, met.title),
                         )
                     }
                 }

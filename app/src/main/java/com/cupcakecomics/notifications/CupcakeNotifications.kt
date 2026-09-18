@@ -29,7 +29,7 @@ object CupcakeNotifications {
     private const val NOTIF_PULL = 1001
     private const val NOTIF_DOWNLOADS = 1002
     private const val NOTIF_REMINDER_PULL_BASE = 1100
-    private const val NOTIF_REMINDER_BOOK_BASE = 1200
+    private const val NOTIF_REMINDER_BOOK_BASE = 120_000
     private const val PREFS = "cupcake_notify_buffer"
     private const val KEY_PENDING_TITLES = "pending_pull_titles"
     private const val MAX_LINES = 5
@@ -337,43 +337,59 @@ object CupcakeNotifications {
 
     /** Scheduled reminder: open a specific book at [page] (1-based). */
     @JvmStatic
-    fun notifyBookReminder(
+    suspend fun notifyBookReminder(
         context: Context,
-        reminderId: Long,
-        title: String,
-        page: Int,
         reminder: com.cupcakecomics.data.ReminderEntity,
+        page: Int,
+        goalPagesRead: Int?,
     ) {
         if (!areNotificationsAllowed(context)) return
         ensureChannels(context)
         val app = context.applicationContext
+        val settings = CupcakeSettings(app)
         val open = com.cupcakecomics.reminders.ReminderOpenHelper.readerIntent(app, reminder, page)
             ?: return
-        val notifId = (NOTIF_REMINDER_BOOK_BASE + (reminderId % 1000).toInt())
+        val notifId = bookNotifId(reminder.id)
         val pending = PendingIntent.getActivity(
             app, notifId, open,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val contentTitle = app.getString(R.string.reminder_book_notify_title, title)
-        val body = app.getString(R.string.reminder_book_notify_body, page)
+        val shortTitle = shortBookTitle(reminder)
+        val contentTitle = app.getString(R.string.reminder_book_notify_title, shortTitle)
+        val body = bookReminderBody(app, reminder, page, goalPagesRead)
         val builder = NotificationCompat.Builder(app, CHANNEL_REMINDERS)
             .setSmallIcon(R.drawable.ic_collections_image_24)
             .setContentTitle(contentTitle)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(pending)
+            .addAction(0, app.getString(R.string.reminder_book_action_read_now), pending)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        if (settings.reminderCoverArt) {
+            val cover = ReminderCoverLoader.load(app, reminder)
+            if (cover != null) {
+                builder.setLargeIcon(cover)
+                builder.setStyle(
+                    NotificationCompat.BigPictureStyle()
+                        .bigPicture(cover)
+                        .bigLargeIcon(null as android.graphics.Bitmap?)
+                        .setBigContentTitle(contentTitle)
+                        .setSummaryText(body),
+                )
+            }
+        }
         NotificationManagerCompat.from(app).notify(notifId, builder.build())
     }
 
     @JvmStatic
-    fun notifyBookFinished(context: Context, reminderId: Long, title: String) {
+    suspend fun notifyBookFinished(context: Context, reminder: com.cupcakecomics.data.ReminderEntity) {
         if (!areNotificationsAllowed(context)) return
         ensureChannels(context)
         val app = context.applicationContext
-        val notifId = (NOTIF_REMINDER_BOOK_BASE + (reminderId % 1000).toInt())
-        val body = app.getString(R.string.reminder_book_finished_body, title)
+        val settings = CupcakeSettings(app)
+        val notifId = bookNotifId(reminder.id)
+        val body = app.getString(R.string.reminder_book_finished_body, shortBookTitle(reminder))
         val builder = NotificationCompat.Builder(app, CHANNEL_REMINDERS)
             .setSmallIcon(R.drawable.ic_collections_image_24)
             .setContentTitle(app.getString(R.string.reminder_book_finished_title))
@@ -381,6 +397,57 @@ object CupcakeNotifications {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        // Tapping reopens the book from the start for a re-read.
+        com.cupcakecomics.reminders.ReminderOpenHelper.readerIntent(app, reminder, 1)?.let { open ->
+            builder.setContentIntent(
+                PendingIntent.getActivity(
+                    app, notifId, open,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+        }
+        if (settings.reminderCoverArt) {
+            ReminderCoverLoader.load(app, reminder)?.let { builder.setLargeIcon(it) }
+        }
         NotificationManagerCompat.from(app).notify(notifId, builder.build())
+    }
+
+    /** Stable per-reminder id; no modulo so distinct reminders never collide. */
+    internal fun bookNotifId(reminderId: Long): Int =
+        (NOTIF_REMINDER_BOOK_BASE + reminderId).toInt()
+
+    /** Short shelf title for copy; never the raw file name. */
+    internal fun shortBookTitle(reminder: com.cupcakecomics.data.ReminderEntity): String {
+        val raw = reminder.title.ifBlank {
+            reminder.smbRelativePath?.substringAfterLast('/')
+                ?: reminder.localPath?.substringAfterLast('/')
+                ?: reminder.identityKey?.substringAfterLast('/')
+                ?: ""
+        }
+        return ComicFileNames.shortDisplayName(raw)
+    }
+
+    internal fun bookReminderBody(
+        context: Context,
+        reminder: com.cupcakecomics.data.ReminderEntity,
+        page: Int,
+        goalPagesRead: Int?,
+    ): String {
+        if (reminder.goalPages > 0 && goalPagesRead != null) {
+            val window = context.getString(
+                com.cupcakecomics.reminders.GoalWindow.windowLabelRes(reminder.goalCadence),
+            )
+            val left = (reminder.goalPages - goalPagesRead).coerceAtLeast(0)
+            return if (left <= 0) {
+                context.getString(R.string.reminder_book_notify_body_goal_met, window, goalPagesRead)
+            } else {
+                context.getString(R.string.reminder_book_notify_body_goal, left, window)
+            }
+        }
+        if (reminder.totalPages > 0) {
+            val leftInBook = (reminder.totalPages - page).coerceAtLeast(0)
+            return context.getString(R.string.reminder_book_notify_body_pages_left, page, leftInBook)
+        }
+        return context.getString(R.string.reminder_book_notify_body, page)
     }
 }

@@ -32,25 +32,33 @@ data class ReminderEntity(
     val localPath: String? = null,
     val smbShareId: Long = 0,
     val smbRelativePath: String? = null,
+    // Legacy progression fields. Columns stay for schema stability; logic reads
+    // the goal model below. MIGRATION_9_10 folds page-a-day and daily goals into it.
     val pageMode: ReminderPageMode = ReminderPageMode.RESUME,
     /** 1-based page index for page-a-day mode. */
     val pageADayIndex: Int = 1,
     /** 1-based tracked progress for local-file resume mode. */
     val trackedPage: Int = 1,
-    /**
-     * Optional daily habit goal in pages. Values >= 2 enable per-day page counting
-     * and a one-time in-reader banner when the goal is met. 0/1 = no goal.
-     */
     @androidx.room.ColumnInfo(defaultValue = "0")
     val dailyPageGoal: Int = 0,
     /** When false no status-bar reminder is scheduled; goal tracking still applies. */
     @androidx.room.ColumnInfo(defaultValue = "1")
     val notifyEnabled: Boolean = true,
+    /** Pages-per-window reading goal. 0 = no goal (simple resume reminder). */
+    @androidx.room.ColumnInfo(defaultValue = "0")
+    val goalPages: Int = 0,
+    /** Window the [goalPages] goal applies to. */
+    @androidx.room.ColumnInfo(defaultValue = "DAILY")
+    val goalCadence: ReminderFrequency = ReminderFrequency.DAILY,
+    /** Cached page count for finish detection and "pages left in book"; 0 = unknown. */
+    @androidx.room.ColumnInfo(defaultValue = "0")
+    val totalPages: Int = 0,
     val lastFiredAt: Long = 0L,
     val nextFireAt: Long = 0L,
 ) {
-    /** Page-a-day reminders need their fire to advance the page, so they always notify. */
-    fun effectiveNotify(): Boolean = notifyEnabled || pageMode == ReminderPageMode.PAGE_A_DAY
+    fun effectiveNotify(): Boolean = notifyEnabled
+
+    fun hasGoal(): Boolean = goalPages > 0
 }
 
 @Entity(tableName = "daily_reading_progress", primaryKeys = ["bookKey", "day"])

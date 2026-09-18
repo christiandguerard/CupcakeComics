@@ -48,6 +48,11 @@ class CupcakeSettings(context: Context) {
         get() = prefs.getBoolean(KEY_NOTIFY_DOWNLOADS, true)
         set(value) = prefs.edit().putBoolean(KEY_NOTIFY_DOWNLOADS, value).apply()
 
+    /** Attach the book's cover (large icon + big picture) to reminder notifications. */
+    var reminderCoverArt: Boolean
+        get() = prefs.getBoolean(KEY_REMINDER_COVER_ART, true)
+        set(value) = prefs.edit().putBoolean(KEY_REMINDER_COVER_ART, value).apply()
+
     /** When true, SMB “Download for offline” runs via WorkManager instead of a blocking dialog. */
     var offlineDownloadBackground: Boolean
         get() = prefs.getBoolean(KEY_OFFLINE_DL_BG, true)
@@ -153,6 +158,7 @@ class CupcakeSettings(context: Context) {
         private const val KEY_QUIET_START = "cupcake_quiet_hours_start"
         private const val KEY_QUIET_END = "cupcake_quiet_hours_end"
         private const val KEY_NOTIFY_DOWNLOADS = "cupcake_notify_downloads"
+        private const val KEY_REMINDER_COVER_ART = "cupcake_reminder_cover_art"
         private const val KEY_OFFLINE_DL_BG = "cupcake_offline_download_background"
         private const val KEY_PULL_SCAN_MIN = "cupcake_pull_list_scan_minutes"
         private const val KEY_PULL_SCAN_WIFI = "cupcake_pull_list_scan_wifi_only"

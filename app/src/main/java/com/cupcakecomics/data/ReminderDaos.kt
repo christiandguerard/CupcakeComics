@@ -69,8 +69,25 @@ interface ReminderDao {
 
     @Query(
         """
+        UPDATE reminders SET totalPages = :totalPages
+        WHERE type = 'BOOK' AND identityKey = :identityKey AND totalPages != :totalPages
+        """,
+    )
+    suspend fun updateTotalPagesForIdentity(identityKey: String, totalPages: Int)
+
+    @Query(
+        """
+        UPDATE reminders SET totalPages = :totalPages
+        WHERE type = 'BOOK' AND bookSource = 'LOCAL'
+          AND localPath = :localPath AND totalPages != :totalPages
+        """,
+    )
+    suspend fun updateTotalPagesForLocalPath(localPath: String, totalPages: Int)
+
+    @Query(
+        """
         SELECT * FROM reminders
-        WHERE enabled = 1 AND type = 'BOOK' AND dailyPageGoal >= :minGoal
+        WHERE enabled = 1 AND type = 'BOOK' AND goalPages >= :minGoal
         """,
     )
     suspend fun getEnabledGoalReminders(minGoal: Int): List<ReminderEntity>
@@ -83,6 +100,22 @@ interface DailyReadingProgressDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: DailyReadingProgressEntity)
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(pagesRead), 0) FROM daily_reading_progress
+        WHERE bookKey = :bookKey AND day >= :fromDay AND day <= :toDay
+        """,
+    )
+    suspend fun sumPages(bookKey: String, fromDay: String, toDay: String): Int
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM daily_reading_progress
+        WHERE bookKey = :bookKey AND day >= :fromDay AND day <= :toDay AND goalMetAt > 0
+        """,
+    )
+    suspend fun goalMetCount(bookKey: String, fromDay: String, toDay: String): Int
 
     @Query("DELETE FROM daily_reading_progress WHERE day < :cutoffDay")
     suspend fun pruneBefore(cutoffDay: String)

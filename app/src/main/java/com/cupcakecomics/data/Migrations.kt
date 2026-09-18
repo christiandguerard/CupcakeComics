@@ -59,5 +59,34 @@ object CupcakeMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_7_8, MIGRATION_8_9)
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE reminders ADD COLUMN goalPages INTEGER NOT NULL DEFAULT 0",
+            )
+            db.execSQL(
+                "ALTER TABLE reminders ADD COLUMN goalCadence TEXT NOT NULL DEFAULT 'DAILY'",
+            )
+            db.execSQL(
+                "ALTER TABLE reminders ADD COLUMN totalPages INTEGER NOT NULL DEFAULT 0",
+            )
+            // Fold legacy progression modes into the goal model: page-a-day becomes
+            // a 1 page/day goal, and per-day habit goals keep their page count.
+            db.execSQL(
+                "UPDATE reminders SET goalPages = 1, goalCadence = 'DAILY' " +
+                    "WHERE type = 'BOOK' AND pageMode = 'PAGE_A_DAY'",
+            )
+            db.execSQL(
+                "UPDATE reminders SET goalPages = dailyPageGoal, goalCadence = 'DAILY' " +
+                    "WHERE type = 'BOOK' AND pageMode != 'PAGE_A_DAY' AND dailyPageGoal >= 2",
+            )
+            // Page-a-day always notified; preserve that now that notifyEnabled is sole switch.
+            db.execSQL(
+                "UPDATE reminders SET notifyEnabled = 1 " +
+                    "WHERE type = 'BOOK' AND pageMode = 'PAGE_A_DAY'",
+            )
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
 }

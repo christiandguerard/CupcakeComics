@@ -5,7 +5,7 @@ import android.content.res.Configuration
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.cupcakecomics.pulllist.PullListRepository
-import com.cupcakecomics.reminders.DailyReadingTracker
+import com.cupcakecomics.reminders.GoalProgressTracker
 import com.cupcakecomics.reminders.ReminderRepository
 import com.cupcakecomics.reader.layout.PageLayoutEngine
 import com.cupcakecomics.reader.model.PageDescriptor
@@ -33,7 +33,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private val settingsStore = ReaderSettingsStore(application)
     private val pullRepo = PullListRepository(application)
     private val reminderRepo = ReminderRepository(application)
-    private val dailyTracker = DailyReadingTracker(application)
+    private val dailyTracker = GoalProgressTracker(application)
 
     private var pageSource: PageSource? = null
     private var comic: Comic? = null
@@ -49,8 +49,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private val _session = MutableStateFlow(ReaderSession())
     val session: StateFlow<ReaderSession> = _session.asStateFlow()
 
-    private val _dailyGoalMet = MutableSharedFlow<DailyReadingTracker.GoalMet>(extraBufferCapacity = 1)
-    val dailyGoalMet: kotlinx.coroutines.flow.SharedFlow<DailyReadingTracker.GoalMet> =
+    private val _dailyGoalMet = MutableSharedFlow<GoalProgressTracker.GoalMet>(extraBufferCapacity = 1)
+    val dailyGoalMet: kotlinx.coroutines.flow.SharedFlow<GoalProgressTracker.GoalMet> =
         _dailyGoalMet.asSharedFlow()
 
     @Volatile private var stageCancelledFlag = false
@@ -341,6 +341,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 runCatching {
                     settingsStore.setLastPage(key, highest)
                     pullRepo.updateReadingProgressSync(key, highest, s.pageCount)
+                    reminderRepo.updateTotalPagesForIdentity(key, s.pageCount)
                 }
             } else if (!localFilePath.isNullOrBlank() && s.pageCount > 0) {
                 // Offline opens without an identity still resume via local path key.
@@ -351,6 +352,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             localFilePath?.let { path ->
                 runCatching {
                     reminderRepo.updateTrackedPageForLocalPath(path, highest)
+                    if (s.pageCount > 0) reminderRepo.updateTotalPagesForLocalPath(path, s.pageCount)
                 }
             }
             if (!key.isNullOrBlank()) {
